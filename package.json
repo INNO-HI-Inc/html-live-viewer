@@ -2,7 +2,7 @@
   "name": "html-live-viewer",
   "displayName": "HTML Live Viewer",
   "description": "HTML 파일이나 폴더를 열면 실시간 렌더링 결과를 웹페이지처럼 보여주는 미리보기/뷰어 확장",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "innohi",
   "license": "MIT",
   "icon": "icon.png",
@@ -215,6 +215,11 @@
           "type": "boolean",
           "default": false,
           "description": "⚠️ 미리보기 서버를 로컬 네트워크(0.0.0.0)에 공개합니다. 같은 Wi-Fi의 기기(휴대폰)에서 접속할 수 있으며, 워크스페이스 파일이 네트워크에 노출됩니다."
+        },
+        "htmlViewer.syncScroll": {
+          "type": "boolean",
+          "default": false,
+          "description": "에디터를 스크롤하면 미리보기도 같은 비율로 스크롤합니다."
         }
       }
     }

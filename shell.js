@@ -40,7 +40,8 @@ function icon(name) {
     reload: '<path d="M2.8 8a5.2 5.2 0 1 0 1.5-3.7"/><path d="M2.8 1.9v2.8h2.8"/>',
     bg: '<circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v10.8A5.4 5.4 0 0 0 8 2.6Z" fill="currentColor" stroke="none"/>',
     grid: '<path d="M2.5 5.6h11M2.5 10.4h11M5.6 2.5v11M10.4 2.5v11"/>',
-    sliders: '<path d="M2.5 4.6h5.4M11.6 4.6h1.9M2.5 11.4h2M8.6 11.4h4.9"/><circle cx="9.5" cy="4.6" r="1.6"/><circle cx="6.5" cy="11.4" r="1.6"/>'
+    sliders: '<path d="M2.5 4.6h5.4M11.6 4.6h1.9M2.5 11.4h2M8.6 11.4h4.9"/><circle cx="9.5" cy="4.6" r="1.6"/><circle cx="6.5" cy="11.4" r="1.6"/>',
+    target: '<circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/><path d="M8 1.2v2.2M8 12.6v2.2M1.2 8h2.2M12.6 8h2.2"/>'
   };
   return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" ' +
     'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (P[name] || '') + '</svg>';
@@ -95,6 +96,7 @@ function settingsRows(v) {
     row('새로고침 지연', '입력 후 갱신까지 대기 시간입니다.',
       '<div class="num"><input type="range" min="0" max="1500" step="50" data-key="refreshDelay" value="' + delay + '">' +
       '<span class="val" id="delayVal">' + delay + 'ms</span></div>') +
+    row('에디터 스크롤 동기화', '에디터를 스크롤하면 미리보기도 따라갑니다.', toggle('syncScroll', v.syncScroll)) +
     gl('진단') +
     row('콘솔/에러 전달', "페이지의 console·에러를 'HTML Preview Console'로 보냅니다.", toggle('forwardConsole', v.forwardConsole)) +
     row('에러 화면 표시', '에러가 나면 미리보기 위 유리 카드로 보여줍니다.', toggle('showErrorOverlay', v.showErrorOverlay)) +
@@ -184,6 +186,7 @@ function iframeShell(url, v) {
     '<button id="rl" class="ib" title="하드 새로고침">' + icon('reload') + '</button>' +
     '<button id="bgb" class="ib" title="배경 전환(흰/체커/다크)">' + icon('bg') + '</button>' +
     '<button id="grb" class="ib" title="그리드 오버레이">' + icon('grid') + '</button>' +
+    '<button id="ins" class="ib" title="요소 검사 (클릭→소스로 이동)">' + icon('target') + '</button>' +
     '</div>' +
     '<span id="dim"></span><span id="eb" title="에러 상태">✓</span>' +
     '<button id="gear" class="ib" title="설정">' + icon('sliders') + '</button></div>' +
@@ -226,11 +229,17 @@ function iframeShell(url, v) {
     'else{wrap.style.background="#141414";f.style.background="transparent";}});' +
     'var gv=document.getElementById("gridov"),grb=document.getElementById("grb");' +
     'grb.addEventListener("click",function(){var on=gv.style.display!=="block";gv.style.display=on?"block":"none";grb.classList.toggle("on",on);});' +
+    'var insB=document.getElementById("ins"),insOn=false;' +
+    'insB.addEventListener("click",function(){insOn=!insOn;insB.classList.toggle("on",insOn);' +
+    'try{f.contentWindow.postMessage({__hlv:"inspect",on:insOn},"*")}catch(_){}} );' +
     'var dr=document.getElementById("drawer"),gearB=document.getElementById("gear");' +
     'gearB.addEventListener("click",function(){dr.hidden=!dr.hidden;gearB.classList.toggle("on",!dr.hidden);});' +
     'document.getElementById("gclose").addEventListener("click",function(){dr.hidden=true;gearB.classList.remove("on");});' +
     'window.addEventListener("message",function(e){var d=e.data;if(!d)return;' +
     'if(d.__hlv==="open"&&api){api.postMessage({type:"openSource",raw:d.raw});}' +
+    'else if(d.__hlv==="pick"){if(api)api.postMessage({type:"pick",info:d.info});}' +
+    'else if(d.__hlv==="inspectOff"){insOn=false;insB.classList.remove("on");}' +
+    'else if(d.type==="scrollTo"){try{f.contentWindow.postMessage({__hlv:"scroll",ratio:d.ratio},"*")}catch(_){}}' +
     'else if(d.__hlv==="errcount"){var eb=document.getElementById("eb");if(eb){' +
     'if(d.n>0){eb.textContent="⚠ "+d.n;eb.classList.add("bad");}else{eb.textContent="✓";eb.classList.remove("bad");}}}});' +
     settingsControlsScript() +

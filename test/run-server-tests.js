@@ -206,6 +206,29 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms || 30));
     srv.spaFallback = false;
   }
 
+  // 9b) 디렉터리 목록 (index.html 없는 폴더)
+  {
+    console.log('\n[S9b] 디렉터리 목록');
+    fs.mkdirSync(path.join(dir, 'pages'));
+    fs.writeFileSync(path.join(dir, 'pages', 'about.html'), '<html><body>A</body></html>');
+    fs.writeFileSync(path.join(dir, 'pages', 'note.txt'), 'x');
+    const ls = await get(port, '/pages');
+    check('index 없는 폴더 → 200 목록', ls.status === 200 && /text\/html/.test(ls.type));
+    check('파일 링크 포함', ls.body.includes('/pages/about.html') && ls.body.includes('note.txt'));
+    check('index 있는 폴더는 여전히 index 서빙', (await get(port, '/sub')).body.includes('SUB_MARK'));
+  }
+
+  // 9c) 요소 검사/스크롤 동기화 코드 주입
+  {
+    console.log('\n[S9c] 요소 검사·스크롤 수신 주입');
+    const on = await get(port, '/index.html');
+    check('inspect/pick 코드 주입', on.body.includes('__hlv==="inspect"') && on.body.includes('"pick"'));
+    check('scroll 수신 코드 주입', on.body.includes('__hlv==="scroll"'));
+    const js = (on.body.match(/<script data-hlv-client>([\s\S]*?)<\/script>/) || [])[1] || '';
+    let ok = false; try { new Function(js); ok = true; } catch (e) { console.log('    err:', e.message); }
+    check('주입 스크립트 문법 유효(재검증)', ok);
+  }
+
   // 10) host 바인딩 파라미터
   {
     console.log('\n[S10] host 바인딩');

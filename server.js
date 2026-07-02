@@ -51,7 +51,19 @@ function clientSnippet(forwardConsole, showErrorOverlay, qualityChecks) {
     'else{location.reload();}};}catch(e){}' +
     // 전체 리로드 시 스크롤 위치 보존
     'try{var SK="__hlv_sy__";addEventListener("scroll",function(){try{sessionStorage.setItem(SK,String(scrollY))}catch(_){}} ,{passive:true});' +
-    'addEventListener("load",function(){try{var y=sessionStorage.getItem(SK);if(y)scrollTo(0,parseFloat(y)||0)}catch(_){}} );}catch(e){}';
+    'addEventListener("load",function(){try{var y=sessionStorage.getItem(SK);if(y)scrollTo(0,parseFloat(y)||0)}catch(_){}} );}catch(e){}' +
+    // 요소 검사 모드 + 부모(셸)에서 온 스크롤 동기화
+    'try{var INS=false,olEl=null;' +
+    'function hlvClearOl(){if(olEl){try{olEl.style.outline=olEl.__hlvOl||"";}catch(_){}olEl=null;}}' +
+    'addEventListener("message",function(e){var d=e.data;if(!d||!d.__hlv)return;' +
+    'if(d.__hlv==="scroll"){try{var h=document.documentElement.scrollHeight-innerHeight;scrollTo(0,Math.max(0,h*d.ratio));}catch(_){}}' +
+    'else if(d.__hlv==="inspect"){INS=!!d.on;if(!INS)hlvClearOl();}});' +
+    'addEventListener("mouseover",function(e){if(!INS)return;hlvClearOl();var t=e.target;if(!t||!t.style)return;olEl=t;t.__hlvOl=t.style.outline;t.style.outline="2px solid #ff5f4d";},true);' +
+    'addEventListener("click",function(e){if(!INS)return;e.preventDefault();e.stopPropagation();var t=e.target||{};' +
+    'var info={tag:(t.tagName||"").toLowerCase(),id:t.id||"",cls:(typeof t.className==="string"?t.className.trim():"").split(" ")[0]||"",text:((t.textContent||"").trim()).slice(0,40)};' +
+    'INS=false;hlvClearOl();' +
+    'try{parent.postMessage({__hlv:"pick",info:info},"*")}catch(_){}' +
+    'try{parent.postMessage({__hlv:"inspectOff"},"*")}catch(_){}},true);}catch(e){}';
 
   let hooks = '';
   if (forwardConsole || showErrorOverlay) {
@@ -215,7 +227,13 @@ class PreviewServer {
 
     let stat = null;
     try { stat = fs.statSync(abs); } catch (_) { stat = null; }
-    if (stat && stat.isDirectory()) abs = path.join(abs, 'index.html');
+    if (stat && stat.isDirectory()) {
+      const idx = path.join(abs, 'index.html');
+      let hasIdx = false;
+      try { hasIdx = fs.statSync(idx).isFile(); } catch (_) { /* noop */ }
+      if (!hasIdx) return this._listing(res, abs, pathname);
+      abs = idx;
+    }
 
     const ext = path.extname(abs).toLowerCase();
     const mime = MIME[ext] || 'application/octet-stream';
@@ -311,6 +329,30 @@ class PreviewServer {
       res.writeHead(204); res.end();
     });
     req.on('error', () => { try { res.writeHead(400); res.end(); } catch (_) { /* noop */ } });
+  }
+
+  /** index.html이 없는 디렉터리의 파일 목록 페이지. */
+  _listing(res, absDir, pathname) {
+    fs.readdir(absDir, { withFileTypes: true }, (err, ents) => {
+      if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Not Found'); return; }
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const base = pathname.endsWith('/') ? pathname : pathname + '/';
+      ents.sort((a, b) => (Number(b.isDirectory()) - Number(a.isDirectory())) || a.name.localeCompare(b.name));
+      let items = '';
+      if (pathname !== '/') items += '<li><a href="' + esc(base) + '..">&#128193; ..</a></li>';
+      for (const e of ents) {
+        if (e.name.startsWith('.')) continue;
+        const ic = e.isDirectory() ? '&#128193;' : (/\.html?$/i.test(e.name) ? '&#127760;' : '&#128196;');
+        items += '<li><a href="' + esc(base + e.name) + '">' + ic + ' ' + esc(e.name) + (e.isDirectory() ? '/' : '') + '</a></li>';
+      }
+      const html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>' + esc(pathname) + '</title>' +
+        '<style>body{font:14px -apple-system,BlinkMacSystemFont,sans-serif;max-width:640px;margin:40px auto;padding:0 20px;color:#333}' +
+        'h1{font-size:16px;color:#E24E22}ul{list-style:none;padding:0}li{padding:8px 0;border-bottom:1px solid #eee}' +
+        'a{text-decoration:none;color:#222}a:hover{color:#E24E22}</style></head>' +
+        '<body><h1>&#128194; ' + esc(pathname) + '</h1><ul>' + items + '</ul></body></html>';
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(html);
+    });
   }
 
   _sse(req, res) {

@@ -60,6 +60,7 @@ function currentSettings() {
     qualityChecks: cfg.get('qualityChecks', false),
     spaFallback: cfg.get('spaFallback', false),
     allowNetworkPreview: cfg.get('allowNetworkPreview', false),
+    syncScroll: cfg.get('syncScroll', false),
     autoRefresh: cfg.get('autoRefresh', 'onType'),
     refreshDelay: cfg.get('refreshDelay', 300)
   };
@@ -98,6 +99,24 @@ function openSourceFromPreview(raw) {
       vscode.window.showTextDocument(doc, { selection: new vscode.Range(pos, pos), preview: false });
     }, (e) => dbg('openSource open failed: ' + e));
   } catch (e) { dbg('openSource error: ' + e); }
+}
+
+/** 요소 검사 결과(태그/id/클래스/텍스트)로 소스에서 가장 그럴듯한 줄을 찾아 이동. */
+function jumpToPick(info) {
+  try {
+    if (!panel || !panel.sourceDoc || !info) return;
+    const doc = panel.sourceDoc;
+    const lines = String(doc.getText()).split(/\r?\n/);
+    const findLine = (pred) => { for (let i = 0; i < lines.length; i++) if (pred(lines[i])) return i; return -1; };
+    let line = -1;
+    if (info.id) line = findLine((l) => l.includes('id="' + info.id + '"') || l.includes("id='" + info.id + "'"));
+    if (line < 0 && info.cls) line = findLine((l) => l.includes('<' + info.tag) && l.includes(info.cls));
+    if (line < 0 && info.text) { const t = info.text.slice(0, 24); if (t.length >= 3) line = findLine((l) => l.includes(t)); }
+    if (line < 0 && info.tag) line = findLine((l) => l.includes('<' + info.tag));
+    if (line < 0) return;
+    const pos = new vscode.Position(line, 0);
+    vscode.window.showTextDocument(doc, { selection: new vscode.Range(pos, pos), preview: false });
+  } catch (e) { dbg('pick error: ' + e); }
 }
 
 /** 문서가 속한 서버 루트: 워크스페이스 폴더 우선, 없으면 파일이 있는 디렉터리. */
@@ -370,7 +389,21 @@ function activate(context) {
     }))
   );
 
-  // 설정이 바뀌면 실행 중인 서버에 즉시 반영하고 다시 그린다.
+  // 에디터 스크롤 → 미리보기 동기화 (syncScroll 켰을 때, 비율 기반)
+  context.subscriptions.push(
+    vscode.window.onDidChangeTextEditorVisibleRanges(guard((e) => {
+      if (!panel || !getConfig().get('syncScroll', false)) return;
+      if (!e || !e.textEditor || !panel.sourceDoc) return;
+      if (e.textEditor.document.uri.toString() !== panel.sourceDoc.uri.toString()) return;
+      const ranges = e.visibleRanges;
+      if (!ranges || !ranges.length) return;
+      const total = Math.max(1, (e.textEditor.document.lineCount || 1) - 1);
+      const ratio = Math.min(1, ranges[0].start.line / total);
+      try { panel.webviewPanel.webview.postMessage({ type: 'scrollTo', ratio }); } catch (_) { /* noop */ }
+    }))
+  );
+
+    // 설정이 바뀌면 실행 중인 서버에 즉시 반영하고 다시 그린다.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(guard((e) => {
       if (e && e.affectsConfiguration && !e.affectsConfiguration('htmlViewer')) return;
@@ -459,6 +492,7 @@ class PreviewPanel {
     this.webviewPanel.webview.onDidReceiveMessage(
       guard((m) => {
         if (m && m.type === 'openSource') { openSourceFromPreview(m.raw); return; }
+        if (m && m.type === 'pick') { jumpToPick(m.info); return; }
         applySettingMessage(m);
       }), null, context.subscriptions
     );

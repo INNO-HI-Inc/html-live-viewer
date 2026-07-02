@@ -44,7 +44,8 @@ function makeWebview() {
     },
     _msgHandlers: [],
     onDidReceiveMessage(fn) { this._msgHandlers.push(fn); return makeDisposable(); },
-    postMessage() { return Promise.resolve(true); },
+    _posted: [],
+    postMessage(m) { this._posted.push(m); return Promise.resolve(true); },
     __fireMessage(msg) { this._msgHandlers.slice().forEach((h) => h(msg)); }
   };
 }
@@ -93,6 +94,7 @@ const vscode = {
     get activeTextEditor() { return state.activeTextEditor; },
     get visibleTextEditors() { return state.visibleTextEditors; },
     onDidChangeActiveTextEditor(fn) { state.onActiveEditor.push(fn); return makeDisposable(); },
+    onDidChangeTextEditorVisibleRanges(fn) { (state.onVisRange = state.onVisRange || []).push(fn); return makeDisposable(); },
     createWebviewPanel,
     createOutputChannel(name) {
       state.outputs[name] = state.outputs[name] || [];
@@ -160,6 +162,7 @@ const vscode = {
   __reset: reset,
   __runCommand(name, ...args) { return state.commands[name] ? state.commands[name](...args) : undefined; },
   __fireActiveEditor(ed) { state.onActiveEditor.slice().forEach((h) => h(ed)); },
+  __fireVisibleRanges(e) { (state.onVisRange || []).slice().forEach((h) => h(e)); },
   __fireChangeDoc(e) { state.onChangeDoc.slice().forEach((h) => h(e)); },
   __fireSaveDoc(d) { state.onSaveDoc.slice().forEach((h) => h(d)); }
 };

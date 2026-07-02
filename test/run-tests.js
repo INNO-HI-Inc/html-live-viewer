@@ -272,6 +272,37 @@ function check(name, cond) {
     ext.deactivate();
   }
 
+  // 7b2) 요소 검사 점프 + 에디터 스크롤 동기화
+  {
+    console.log('\n[7b2] 요소 검사 점프 · 스크롤 동기화');
+    mock.__reset();
+    mock.__state.config['htmlViewer.syncScroll'] = true;
+    const dir = tmpDir();
+    const CONTENT = '<html>\n<body>\n<div id="hero">Hi</div>\n</body>\n</html>';
+    fs.writeFileSync(path.join(dir, 'index.html'), CONTENT);
+    const doc = fakeDoc(path.join(dir, 'index.html'), () => CONTENT);
+    doc.lineCount = 5;
+    mock.__state.workspaceFolderRoot = dir;
+    mock.__state.textDocuments = [doc];
+    mock.__state.activeTextEditor = { document: doc };
+    const ext = loadExtFresh();
+    ext.activate(fakeContext());
+    await tick();
+    const p0 = mock.__state.panels[0];
+    // 검사 클릭 → id="hero" 줄(index 2)로 점프
+    p0.webview.__fireMessage({ type: 'pick', info: { tag: 'div', id: 'hero', cls: '', text: 'Hi' } });
+    await tick(10);
+    check('pick → id 줄로 점프(2)', mock.__state.shownDoc && mock.__state.shownDoc.opts.selection.start.line === 2);
+    // 에디터 스크롤 → scrollTo 메시지
+    mock.__fireVisibleRanges({ textEditor: { document: doc }, visibleRanges: [{ start: { line: 2 } }] });
+    await tick(10);
+    const posted = p0.webview._posted || [];
+    const sc = posted.find((m) => m && m.type === 'scrollTo');
+    check('스크롤 동기화 → scrollTo(ratio 0.5)', !!sc && Math.abs(sc.ratio - 0.5) < 0.01);
+    check('셸에 검사 버튼/브리지 포함', p0.webview.html.includes('id="ins"') && p0.webview.html.includes('scrollTo'));
+    ext.deactivate();
+  }
+
   // 7c) QR 명령: 미리보기 없으면 안내, 있으면 네트워크 공개 경고
   {
     console.log('\n[7c] QR 명령(휴대폰으로 보기)');
