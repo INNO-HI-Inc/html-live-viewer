@@ -137,6 +137,7 @@ const vscode = {
     },
     onDidChangeTextDocument(fn) { state.onChangeDoc.push(fn); return makeDisposable(); },
     onDidSaveTextDocument(fn) { state.onSaveDoc.push(fn); return makeDisposable(); },
+    onDidChangeConfiguration(fn) { (state.onCfg = state.onCfg || []).push(fn); return makeDisposable(); },
     createFileSystemWatcher() {
       return {
         onDidChange() { return makeDisposable(); },

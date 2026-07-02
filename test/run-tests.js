@@ -231,6 +231,7 @@ function check(name, cond) {
     check('툴바에 기기 프리셋/커스텀 폭/줌 포함', html.includes('id="dev"') && html.includes('id="w"') && html.includes('id="zo"') && html.includes('id="zi"'));
     check('툴바에 하드리로드/배경/그리드 포함', html.includes('id="rl"') && html.includes('id="bgb"') && html.includes('id="grb"') && html.includes('id="gridov"'));
     check('툴바에 에러 상태 배지 + errcount 처리', html.includes('id="eb"') && html.includes('errcount'));
+    check('반응형: 회전/디바이스 프레임/치수맵 포함', html.includes('id="rot"') && html.includes('id="frm"') && html.includes('DIMS') && html.includes('bezel'));
     check('에러→소스 점프 브리지 포함', html.includes('__hlv') && html.includes('openSource'));
     const src = iframeSrc(html);
     mock.__runCommand('htmlViewer.copyUrl');

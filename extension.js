@@ -2,6 +2,7 @@
 const vscode = require('vscode');
 const path = require('path');
 const { PreviewServer } = require('./server');
+const shell = require('./shell');
 
 /** @type {import('vscode').OutputChannel | undefined} */
 let output;
@@ -53,6 +54,7 @@ function currentSettings() {
     forwardConsole: cfg.get('forwardConsole', true),
     showErrorOverlay: cfg.get('showErrorOverlay', true),
     qualityChecks: cfg.get('qualityChecks', false),
+    spaFallback: cfg.get('spaFallback', false),
     autoRefresh: cfg.get('autoRefresh', 'onType'),
     refreshDelay: cfg.get('refreshDelay', 300)
   };
@@ -310,6 +312,20 @@ function activate(context) {
     }))
   );
 
+  // 설정이 바뀌면 실행 중인 서버에 즉시 반영하고 다시 그린다.
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(guard((e) => {
+      if (e && e.affectsConfiguration && !e.affectsConfiguration('htmlViewer')) return;
+      if (!server) return;
+      const cfg = getConfig();
+      server.forwardConsole = cfg.get('forwardConsole', true);
+      server.showErrorOverlay = cfg.get('showErrorOverlay', true);
+      server.qualityChecks = cfg.get('qualityChecks', false);
+      server.spaFallback = cfg.get('spaFallback', false);
+      scheduleReload(200, 'full');
+    }))
+  );
+
   // 디스크 변경 감시 (에디터에 안 열린 파일·외부 도구 변경까지 반영).
   // 서버 루트 밖이거나 흔한 산출물/의존성 디렉터리 변경은 무시해 불필요한 리로드를 막는다.
   try {
@@ -373,7 +389,7 @@ class PreviewPanel {
       column,
       { enableScripts: true, retainContextWhenHidden: true }
     );
-    try { this.webviewPanel.webview.html = loadingShell(); } catch (_) { /* noop */ }
+    try { this.webviewPanel.webview.html = shell.loadingShell(); } catch (_) { /* noop */ }
 
     // 미리보기에서 온 메시지: 설정 변경 / 에러 소스 점프.
     this.webviewPanel.webview.onDidReceiveMessage(
@@ -436,7 +452,7 @@ class PreviewPanel {
 
     this._url = base + rel;
     dbg('preview url = ' + this._url);
-    try { this.webviewPanel.webview.html = iframeShell(this._url, currentSettings()); }
+    try { this.webviewPanel.webview.html = shell.iframeShell(this._url, currentSettings()); }
     catch (e) { dbg('shell set error: ' + e); }
     updateStatusBar();
   }
@@ -446,173 +462,12 @@ class PreviewPanel {
     this._url = undefined;
     let html;
     try { html = doc.getText(); }
-    catch (e) { dbg('getText failed: ' + e); html = fallbackPage('미리볼 내용을 읽을 수 없습니다.'); }
-    if (typeof html !== 'string') html = fallbackPage('미리볼 내용이 없습니다.');
+    catch (e) { dbg('getText failed: ' + e); html = shell.fallbackPage('미리볼 내용을 읽을 수 없습니다.'); }
+    if (typeof html !== 'string') html = shell.fallbackPage('미리볼 내용이 없습니다.');
     try { this.webviewPanel.webview.html = html; }
     catch (e) { dbg('direct set error: ' + e); }
     updateStatusBar();
   }
-}
-
-/** 설정 컨트롤 공통 CSS (설정 패널 + 미리보기 드로어 공유). */
-function settingsCss() {
-  return '.card{background:var(--vscode-editorWidget-background,#252526);' +
-    'border:1px solid var(--vscode-panel-border,#333);border-radius:12px;padding:4px 18px}' +
-    '.row{display:flex;align-items:center;justify-content:space-between;gap:16px;' +
-    'padding:14px 0;border-bottom:1px solid var(--vscode-panel-border,#333)}' +
-    '.row:last-child{border-bottom:0}.meta{min-width:0}' +
-    '.name{font-weight:600;font-size:13px}.desc{font-size:12px;opacity:.62;margin-top:3px}' +
-    '.switch{position:relative;display:inline-block;width:40px;height:22px;flex:none}' +
-    '.switch input{opacity:0;width:0;height:0}' +
-    '.slider{position:absolute;inset:0;background:#6b6b6b;border-radius:22px;transition:.2s;cursor:pointer}' +
-    '.slider:before{content:"";position:absolute;height:16px;width:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}' +
-    '.switch input:checked+.slider{background:var(--vscode-button-background,#0e639c)}' +
-    '.switch input:checked+.slider:before{transform:translateX(18px)}' +
-    '.seg{display:inline-flex;border:1px solid var(--vscode-panel-border,#3a3a3a);border-radius:7px;overflow:hidden;flex:none}' +
-    '.seg button{border:0;background:transparent;color:var(--vscode-foreground,#ccc);padding:6px 12px;font-size:12px;cursor:pointer}' +
-    '.seg button.active{background:var(--vscode-button-background,#0e639c);color:var(--vscode-button-foreground,#fff)}' +
-    '.num{display:flex;align-items:center;gap:10px;flex:none}' +
-    '.num input[type=range]{accent-color:var(--vscode-button-background,#0e639c);width:130px}' +
-    '.num .val{font:12px monospace;opacity:.8;min-width:54px;text-align:right}';
-}
-
-/** 설정 행 마크업 (값 v로 초기 상태 표시). */
-function settingsRows(v) {
-  v = v || {};
-  const chk = (b) => (b ? ' checked' : '');
-  const act = (a, b) => (a === b ? ' class="active"' : '');
-  const row = (name, desc, control) =>
-    '<div class="row"><div class="meta"><div class="name">' + name + '</div>' +
-    '<div class="desc">' + desc + '</div></div>' + control + '</div>';
-  const toggle = (key, val) =>
-    '<label class="switch"><input type="checkbox" data-key="' + key + '"' + chk(val) + '><span class="slider"></span></label>';
-  const ar = v.autoRefresh || 'onType';
-  const delay = Number(v.refreshDelay) || 0;
-  return row('HTML 파일 열면 자동 미리보기', 'HTML 파일을 열면 미리보기를 자동으로 엽니다.', toggle('autoOpenOnHtml', v.autoOpenOnHtml)) +
-    row('폴더 열면 자동 미리보기', 'index.html(우선)을 찾아 자동으로 엽니다.', toggle('autoOpenOnFolder', v.autoOpenOnFolder)) +
-    row('활성 에디터 따라가기', '다른 HTML로 포커스를 옮기면 대상도 전환됩니다.', toggle('followActiveEditor', v.followActiveEditor)) +
-    row('콘솔/에러 전달', "페이지의 console·에러를 'HTML Preview Console'로 보냅니다.", toggle('forwardConsole', v.forwardConsole)) +
-    row('에러 화면 표시', '자바스크립트 에러가 나면 미리보기 하단에 빨간 배너로 보여줍니다.', toggle('showErrorOverlay', v.showErrorOverlay)) +
-    row('품질 점검', '로드 시 깨진 링크·alt 없는 이미지를 콘솔 패널에 알려줍니다.', toggle('qualityChecks', v.qualityChecks)) +
-    row('자동 새로고침', '언제 미리보기를 갱신할지 정합니다.',
-      '<div class="seg" data-key="autoRefresh">' +
-      '<button data-val="onType"' + act(ar, 'onType') + '>입력 즉시</button>' +
-      '<button data-val="onSave"' + act(ar, 'onSave') + '>저장 시</button>' +
-      '<button data-val="off"' + act(ar, 'off') + '>수동</button></div>') +
-    row('새로고침 지연', '입력 후 갱신까지 대기 시간입니다.',
-      '<div class="num"><input type="range" min="0" max="1500" step="50" data-key="refreshDelay" value="' + delay + '">' +
-      '<span class="val" id="delayVal">' + delay + 'ms</span></div>');
-}
-
-/** 컨트롤을 send(key,value)에 연결하는 JS 본문 (send는 호출측이 정의). */
-function settingsControlsScript() {
-  return 'document.querySelectorAll("input[type=checkbox][data-key]").forEach(function(c){' +
-    'c.addEventListener("change",function(){send(c.getAttribute("data-key"),c.checked);});});' +
-    'document.querySelectorAll(".seg[data-key]").forEach(function(s){var k=s.getAttribute("data-key");' +
-    's.querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){' +
-    's.querySelectorAll("button").forEach(function(x){x.classList.remove("active");});' +
-    'b.classList.add("active");send(k,b.getAttribute("data-val"));});});});' +
-    'var r=document.querySelector("input[type=range][data-key]");if(r){var l=document.getElementById("delayVal");' +
-    'r.addEventListener("input",function(){l.textContent=r.value+"ms";});' +
-    'r.addEventListener("change",function(){send(r.getAttribute("data-key"),parseInt(r.value,10));});}';
-}
-
-/**
- * 웹뷰 셸: 로컬 서버를 iframe으로 임베드 + 반응형 기기 폭 툴바 + ⚙️ 설정 서랍.
- * 값 v를 넘기면 툴바 톱니로 그 자리에서 설정을 바꿀 수 있다.
- */
-function iframeShell(url, v) {
-  const safe = String(url).replace(/"/g, '&quot;');
-  const nonce = getNonce();
-  return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">' +
-    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; ' +
-    'frame-src http: https:; style-src \'unsafe-inline\'; script-src \'nonce-' + nonce + '\';">' +
-    '<style>' +
-    'html,body{margin:0;padding:0;height:100%}' +
-    'body{display:flex;flex-direction:column;font:12px sans-serif;' +
-    'background:var(--vscode-editor-background,#1e1e1e);color:var(--vscode-foreground,#ccc)}' +
-    '#bar{display:flex;align-items:center;gap:6px;padding:4px 8px;' +
-    'background:var(--vscode-sideBar-background,#252526);border-bottom:1px solid var(--vscode-panel-border,#333)}' +
-    '#bar button{cursor:pointer;border:0;border-radius:6px;padding:3px 9px;font:12px sans-serif;' +
-    'color:var(--vscode-button-secondaryForeground,#ccc);background:var(--vscode-button-secondaryBackground,#3a3d41)}' +
-    '#bar select,#bar input{background:var(--vscode-input-background,#2a2a2e);color:var(--vscode-input-foreground,#ddd);' +
-    'border:1px solid var(--vscode-panel-border,#3a3a3a);border-radius:6px;font:12px sans-serif;height:26px;padding:0 6px}' +
-    '#bar input#w{width:64px}' +
-    '#bar .zc{display:inline-flex;align-items:center;border:1px solid var(--vscode-panel-border,#3a3a3a);border-radius:6px}' +
-    '#bar .zc button{background:transparent;padding:2px 8px;font-size:14px;line-height:1;color:var(--vscode-foreground,#ccc)}' +
-    '#bar #z{font-size:11px;min-width:40px;text-align:center;opacity:.85}' +
-    '#gear{font-size:13px;line-height:1}' +
-    '#dim{margin-left:auto;opacity:.65;font-size:11px}' +
-    '#eb{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;background:rgba(60,180,90,.25);color:#8ef0a8}' +
-    '#wrap{flex:1;overflow:auto;display:flex;justify-content:center;position:relative;' +
-    'background:var(--vscode-editor-background,#1e1e1e)}' +
-    'iframe{border:0;width:100%;height:100%;display:block;background:#fff}' +
-    'iframe.framed{box-shadow:0 0 0 1px rgba(0,0,0,.3),0 8px 30px rgba(0,0,0,.35)}' +
-    '#gridov{position:absolute;inset:0;pointer-events:none;z-index:5;display:none;' +
-    'background-image:linear-gradient(rgba(0,120,220,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(0,120,220,.18) 1px,transparent 1px);background-size:8px 8px}' +
-    '#drawer{position:absolute;top:8px;right:8px;width:360px;max-height:calc(100% - 16px);overflow:auto;z-index:10}' +
-    '#drawer[hidden]{display:none}' +
-    '#drawer .dh{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 4px}' +
-    '#drawer .dh b{font-size:12px}#drawer .dh .x{cursor:pointer;opacity:.6;padding:2px 8px;font-size:14px}' +
-    settingsCss() +
-    '</style></head><body>' +
-    '<div id="bar">' +
-    '<select id="dev" title="기기 프리셋">' +
-    '<option value="0">Desktop</option><option value="1280">Laptop · 1280</option>' +
-    '<option value="1024">iPad Pro · 1024</option><option value="820">iPad · 820</option>' +
-    '<option value="393">iPhone 15 · 393</option><option value="375">iPhone SE · 375</option>' +
-    '<option value="360">Galaxy · 360</option><option value="custom">Custom</option></select>' +
-    '<input id="w" type="number" min="200" max="4000" step="10" title="폭(px)">' +
-    '<span class="zc"><button id="zo" title="축소">−</button><span id="z">100%</span><button id="zi" title="확대">+</button></span>' +
-    '<button id="rl" title="하드 새로고침">⟳</button>' +
-    '<button id="bgb" title="배경 전환(흰/체커/다크)">🎨</button>' +
-    '<button id="grb" title="그리드 오버레이">▦</button>' +
-    '<span id="dim"></span><span id="eb" title="에러 상태">✓</span>' +
-    '<button id="gear" title="설정">⚙️</button></div>' +
-    '<div id="wrap">' +
-    '<iframe id="f" src="' + safe + '" allow="autoplay; fullscreen; clipboard-read; clipboard-write"></iframe>' +
-    '<div id="gridov"></div>' +
-    '<div id="drawer" hidden><div class="card">' +
-    '<div class="dh"><b>⚙️ 설정</b><span class="x" id="gclose">✕</span></div>' +
-    settingsRows(v) + '</div></div></div>' +
-    '<script nonce="' + nonce + '">(function(){' +
-    'var api=(typeof acquireVsCodeApi==="function")?acquireVsCodeApi():null;' +
-    'function send(k,val){if(api)api.postMessage({type:"update",key:k,value:val});}' +
-    'var f=document.getElementById("f"),dim=document.getElementById("dim");' +
-    'var dev=document.getElementById("dev"),win=document.getElementById("w"),zEl=document.getElementById("z");' +
-    'function applyW(w){if(!w){f.style.width="100%";f.classList.remove("framed");dim.textContent="100%";}' +
-    'else{f.style.width=w+"px";f.classList.add("framed");dim.textContent=w+" px";}if(win)win.value=w||"";}' +
-    'dev.addEventListener("change",function(){if(dev.value==="custom"){win.focus();return;}applyW(parseInt(dev.value,10)||0);});' +
-    'win.addEventListener("change",function(){var v=parseInt(win.value,10)||0;applyW(v);dev.value="custom";});' +
-    'var zoom=1;function setZoom(z){zoom=Math.max(.25,Math.min(2,Math.round(z*100)/100));try{f.style.zoom=zoom;}catch(_){}zEl.textContent=Math.round(zoom*100)+"%";}' +
-    'document.getElementById("zo").addEventListener("click",function(){setZoom(zoom-0.1);});' +
-    'document.getElementById("zi").addEventListener("click",function(){setZoom(zoom+0.1);});' +
-    'applyW(0);setZoom(1);' +
-    // 하드 새로고침 / 배경 전환 / 그리드
-    'document.getElementById("rl").addEventListener("click",function(){try{f.src=f.src.split("?")[0]+"?hlv="+Date.now();}catch(_){}} );' +
-    'var wrap=document.getElementById("wrap"),bgm=0,CHK="conic-gradient(#cfcfcf 25%,#fff 0 50%,#cfcfcf 0 75%,#fff 0) 0 0/18px 18px";' +
-    'document.getElementById("bgb").addEventListener("click",function(){bgm=(bgm+1)%3;' +
-    'if(bgm===0){wrap.style.background="";f.style.background="#fff";}' +
-    'else if(bgm===1){wrap.style.background=CHK;f.style.background="transparent";}' +
-    'else{wrap.style.background="#141414";f.style.background="transparent";}});' +
-    'var gv=document.getElementById("gridov");' +
-    'document.getElementById("grb").addEventListener("click",function(){gv.style.display=(gv.style.display==="block")?"none":"block";});' +
-    'var dr=document.getElementById("drawer");' +
-    'document.getElementById("gear").addEventListener("click",function(){dr.hidden=!dr.hidden;});' +
-    'document.getElementById("gclose").addEventListener("click",function(){dr.hidden=true;});' +
-    // inner 미리보기에서 온 에러 클릭 → 소스 열기 요청 전달
-    'window.addEventListener("message",function(e){var d=e.data;if(!d)return;' +
-    'if(d.__hlv==="open"&&api){api.postMessage({type:"openSource",raw:d.raw});}' +
-    'else if(d.__hlv==="errcount"){var eb=document.getElementById("eb");if(eb){if(d.n>0){eb.textContent="⚠ "+d.n;eb.style.background="rgba(220,70,60,.28)";eb.style.color="#ffb3ab";}else{eb.textContent="✓";eb.style.background="rgba(60,180,90,.25)";eb.style.color="#8ef0a8";}}}});' +
-    settingsControlsScript() +
-    '})();</script></body></html>';
-}
-
-function getNonce() {
-  let t = '';
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 24; i++) t += chars.charAt(Math.floor(Math.random() * chars.length));
-  return t;
 }
 
 /** 설정 전용 웹뷰 패널을 연다(토글/세그먼트/슬라이더 UI → config 저장). */
@@ -626,54 +481,10 @@ function openSettings(context) {
     vscode.ViewColumn.Active, { enableScripts: true, retainContextWhenHidden: true }
   );
   settingsPanel = p;
-  try { p.webview.html = settingsShell(currentSettings(), getNonce()); } catch (e) { dbg('settings html error: ' + e); }
+  try { p.webview.html = shell.settingsShell(currentSettings(), shell.getNonce()); }
+  catch (e) { dbg('settings html error: ' + e); }
   p.webview.onDidReceiveMessage(guard((m) => applySettingMessage(m)), null, context.subscriptions);
   p.onDidDispose(guard(() => { settingsPanel = undefined; }), null, context.subscriptions);
-}
-
-/** 설정 전용 웹뷰(전체 탭) HTML. 미리보기 드로어와 마크업/CSS 공유. */
-function settingsShell(v, nonce) {
-  return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">' +
-    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; ' +
-    'style-src \'unsafe-inline\'; script-src \'nonce-' + nonce + '\';">' +
-    '<style>' +
-    ':root{color-scheme:light dark}' +
-    'body{margin:0;font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;' +
-    'background:var(--vscode-editor-background,#1e1e1e);color:var(--vscode-foreground,#cccccc);padding:28px 20px}' +
-    '.wrap{max-width:620px;margin:0 auto}' +
-    'header{display:flex;align-items:center;gap:14px;margin-bottom:22px}' +
-    '.logo{width:44px;height:44px;border-radius:12px;flex:none;display:flex;align-items:center;' +
-    'justify-content:center;font-size:24px;background:linear-gradient(160deg,#F16529,#E44D26)}' +
-    'h1{font-size:18px;margin:0}.sub{margin:2px 0 0;font-size:12px;opacity:.65}' +
-    '.foot{text-align:center;font-size:11px;opacity:.5;margin-top:16px}' +
-    settingsCss() +
-    '</style></head><body><div class="wrap">' +
-    '<header><div class="logo">👁</div><div><h1>HTML Live Viewer</h1>' +
-    '<p class="sub">미리보기 설정</p></div></header>' +
-    '<div class="card">' + settingsRows(v) + '</div>' +
-    '<p class="foot">변경 사항은 자동으로 저장됩니다.</p></div>' +
-    '<script nonce="' + nonce + '">(function(){' +
-    'var api=(typeof acquireVsCodeApi==="function")?acquireVsCodeApi():null;' +
-    'function send(k,val){if(api)api.postMessage({type:"update",key:k,value:val});}' +
-    settingsControlsScript() +
-    '})();</script></body></html>';
-}
-
-function loadingShell() {
-  return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">' +
-    '<style>body{font-family:sans-serif;color:#888;padding:24px}</style></head>' +
-    '<body>미리보기 준비 중…</body></html>';
-}
-
-function fallbackPage(msg) {
-  return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"></head>' +
-    '<body style="font-family:sans-serif;padding:24px;color:#888">' + escapeHtml(msg) + '</body></html>';
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"]/g, (c) => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
-  ));
 }
 
 function deactivate() {
@@ -685,4 +496,13 @@ function deactivate() {
   settingsPanel = undefined;
 }
 
-module.exports = { activate, deactivate, __test: { isHtml, escapeHtml, fallbackPage, iframeShell, settingsShell, rootForDoc } };
+module.exports = {
+  activate, deactivate,
+  __test: {
+    isHtml, rootForDoc,
+    escapeHtml: shell.escapeHtml,
+    fallbackPage: shell.fallbackPage,
+    iframeShell: shell.iframeShell,
+    settingsShell: shell.settingsShell
+  }
+};
