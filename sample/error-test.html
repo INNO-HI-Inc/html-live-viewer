@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>에러 오버레이 테스트</title>
+  <style>
+    body { font-family: sans-serif; padding: 40px; }
+    button { padding: 10px 16px; font-size: 15px; cursor: pointer; margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <h1>에러 오버레이 테스트</h1>
+  <p>버튼을 누르면 자바스크립트 에러가 나고, 미리보기 하단에 빨간 배너가 떠야 합니다.</p>
+
+  <button id="a">1) 정의 안 된 함수 호출</button><br>
+  <button id="b">2) console.error 출력</button><br>
+  <button id="c">3) 처리 안 된 Promise 거부</button>
+
+  <script>
+    document.getElementById('a').addEventListener('click', () => {
+      doesNotExist();               // ReferenceError
+    });
+    document.getElementById('b').addEventListener('click', () => {
+      console.error('내가 낸 에러 메시지입니다');
+    });
+    document.getElementById('c').addEventListener('click', () => {
+      Promise.reject(new Error('처리 안 된 거부'));
+    });
+  </script>
+</body>
+</html>

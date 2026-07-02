@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Live Viewer 테스트</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="card">
+    <h1>👀 HTML Live Viewer</h1>
+    <p>왼쪽 에디터에서 이 파일을 수정하면 오른쪽 미리보기가 즉시 바뀝니다.</p>
+    <button id="btn">클릭 횟수: <span id="count">0</span></button>
+    <p class="hint">외부 <code>style.css</code>와 인라인 자바스크립트도 그대로 동작합니다.</p>
+  </main>
+  <script>
+    let n = 0;
+    document.getElementById('btn').addEventListener('click', () => {
+      document.getElementById('count').textContent = ++n;
+    });
+  </script>
+</body>
+</html>

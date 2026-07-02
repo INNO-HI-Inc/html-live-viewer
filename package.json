@@ -1,0 +1,202 @@
+{
+  "name": "html-live-viewer",
+  "displayName": "HTML Live Viewer",
+  "description": "HTML 파일이나 폴더를 열면 실시간 렌더링 결과를 웹페이지처럼 보여주는 미리보기/뷰어 확장",
+  "version": "0.9.4",
+  "publisher": "innohi",
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/INNO-HI-Inc/html-live-viewer"
+  },
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "html",
+    "preview",
+    "viewer",
+    "live",
+    "browser"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onLanguage:html"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "htmlViewer.openPreviewToSide",
+        "title": "HTML: 미리보기 열기 (옆 패널)",
+        "category": "HTML Live Viewer",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "htmlViewer.openPreview",
+        "title": "HTML: 미리보기 열기",
+        "category": "HTML Live Viewer",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "htmlViewer.refresh",
+        "title": "HTML: 미리보기 새로고침",
+        "category": "HTML Live Viewer",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "htmlViewer.openInBrowser",
+        "title": "HTML: 브라우저에서 열기",
+        "category": "HTML Live Viewer",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "htmlViewer.copyUrl",
+        "title": "HTML: 미리보기 URL 복사",
+        "category": "HTML Live Viewer",
+        "icon": "$(link)"
+      },
+      {
+        "command": "htmlViewer.showConsole",
+        "title": "HTML: 미리보기 콘솔 열기",
+        "category": "HTML Live Viewer",
+        "icon": "$(output)"
+      },
+      {
+        "command": "htmlViewer.openSettings",
+        "title": "HTML: 설정 열기",
+        "category": "HTML Live Viewer",
+        "icon": "$(gear)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "htmlViewer.openPreviewToSide",
+          "when": "resourceLangId == html || resourceExtname == .html || resourceExtname == .htm",
+          "group": "navigation"
+        },
+        {
+          "command": "htmlViewer.openInBrowser",
+          "when": "htmlViewer.previewActive",
+          "group": "navigation"
+        },
+        {
+          "command": "htmlViewer.openSettings",
+          "when": "htmlViewer.previewActive",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "htmlViewer.openPreviewToSide",
+          "when": "resourceLangId == html || resourceExtname == .html || resourceExtname == .htm",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "htmlViewer.openPreview",
+          "when": "resourceExtname == .html || resourceExtname == .htm",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "htmlViewer.refresh",
+          "when": "htmlViewer.previewActive"
+        },
+        {
+          "command": "htmlViewer.openInBrowser",
+          "when": "htmlViewer.previewActive"
+        },
+        {
+          "command": "htmlViewer.copyUrl",
+          "when": "htmlViewer.previewActive"
+        },
+        {
+          "command": "htmlViewer.showConsole",
+          "when": "htmlViewer.previewActive"
+        },
+        {
+          "command": "htmlViewer.openSettings"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "htmlViewer.openPreviewToSide",
+        "key": "ctrl+shift+1",
+        "mac": "cmd+shift+1",
+        "when": "editorLangId == html"
+      }
+    ],
+    "configuration": {
+      "title": "HTML Live Viewer",
+      "properties": {
+        "htmlViewer.autoRefresh": {
+          "type": "string",
+          "enum": [
+            "onType",
+            "onSave",
+            "off"
+          ],
+          "enumDescriptions": [
+            "입력하는 즉시 새로고침 (저장 시에도 새로고침)",
+            "파일을 저장할 때만 새로고침",
+            "수동 새로고침만"
+          ],
+          "default": "onType",
+          "description": "미리보기를 언제 자동으로 새로고침할지 설정합니다."
+        },
+        "htmlViewer.refreshDelay": {
+          "type": "number",
+          "default": 300,
+          "minimum": 0,
+          "description": "onType 모드에서 마지막 입력 후 새로고침까지 대기 시간(ms)."
+        },
+        "htmlViewer.followActiveEditor": {
+          "type": "boolean",
+          "default": true,
+          "description": "다른 HTML 파일로 포커스를 옮기면 미리보기 대상도 자동으로 따라갑니다."
+        },
+        "htmlViewer.autoOpenOnHtml": {
+          "type": "boolean",
+          "default": true,
+          "description": "HTML 파일을 열면 미리보기를 자동으로 전체 탭에 엽니다."
+        },
+        "htmlViewer.autoOpenOnFolder": {
+          "type": "boolean",
+          "default": false,
+          "description": "폴더를 열 때 워크스페이스에서 HTML(index.html 우선)을 찾아 자동으로 미리보기를 엽니다. (기본 꺼짐)"
+        },
+        "htmlViewer.forwardConsole": {
+          "type": "boolean",
+          "default": true,
+          "description": "미리보기 페이지의 console.* 출력과 자바스크립트 에러를 'HTML Preview Console' 출력 패널로 전달합니다."
+        },
+        "htmlViewer.showErrorOverlay": {
+          "type": "boolean",
+          "default": true,
+          "description": "자바스크립트 에러가 발생하면 미리보기 화면 하단에 빨간 배너로 표시합니다."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "vsce package",
+    "test": "node test/run-server-tests.js && node test/run-tests.js"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.7.1"
+  },
+  "homepage": "https://inno-hi-inc.github.io/html-live-viewer/",
+  "bugs": {
+    "url": "https://github.com/INNO-HI-Inc/html-live-viewer/issues"
+  }
+}
