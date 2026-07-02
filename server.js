@@ -160,7 +160,8 @@ class PreviewServer {
     this.onClientLog = null;
   }
 
-  start(port) {
+  start(port, host) {
+    this.host = host || '127.0.0.1';
     return new Promise((resolve, reject) => {
       this.server = http.createServer((req, res) => {
         try { this._handle(req, res); }
@@ -168,10 +169,10 @@ class PreviewServer {
       });
       // 고정 포트가 사용 중이면 임의 포트로 폴백
       this.server.on('error', (e) => {
-        if (port && e && e.code === 'EADDRINUSE') { try { this.server.listen(0, '127.0.0.1'); } catch (_) { reject(e); } }
+        if (port && e && e.code === 'EADDRINUSE') { try { this.server.listen(0, this.host); } catch (_) { reject(e); } }
         else reject(e);
       });
-      this.server.listen(port || 0, '127.0.0.1', () => {
+      this.server.listen(port || 0, this.host, () => {
         this.port = this.server.address().port;
         resolve(this.port);
       });

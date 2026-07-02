@@ -206,6 +206,17 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms || 30));
     srv.spaFallback = false;
   }
 
+  // 10) host 바인딩 파라미터
+  {
+    console.log('\n[S10] host 바인딩');
+    const s2 = new PreviewServer(dir);
+    await s2.start(0, '127.0.0.1');
+    check('host 지정 시 해당 주소로 기동', s2.host === '127.0.0.1' && s2.port > 0);
+    const r = await get(s2.port, '/index.html');
+    check('지정 host로 응답', r.status === 200);
+    s2.dispose();
+  }
+
   srv.dispose();
   console.log('\n' + pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);

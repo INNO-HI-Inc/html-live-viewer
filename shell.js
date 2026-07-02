@@ -100,7 +100,8 @@ function settingsRows(v) {
     row('에러 화면 표시', '에러가 나면 미리보기 위 유리 카드로 보여줍니다.', toggle('showErrorOverlay', v.showErrorOverlay)) +
     row('품질 점검', '로드 시 깨진 링크·alt 없는 이미지를 알려줍니다.', toggle('qualityChecks', v.qualityChecks)) +
     gl('서버') +
-    row('SPA 폴백', '확장자 없는 경로를 index.html로 응답합니다.', toggle('spaFallback', v.spaFallback));
+    row('SPA 폴백', '확장자 없는 경로를 index.html로 응답합니다.', toggle('spaFallback', v.spaFallback)) +
+    row('네트워크 공개 (QR)', '⚠️ 같은 Wi-Fi 기기(휴대폰)에서 접속을 허용합니다.', toggle('allowNetworkPreview', v.allowNetworkPreview));
 }
 
 /** 컨트롤을 send(key,value)에 연결하는 JS 본문 (send는 호출측이 정의). */
@@ -264,7 +265,34 @@ function settingsShell(v, nonce) {
     '})();</script></body></html>';
 }
 
+/** QR 패널: 휴대폰으로 보기. */
+function qrShell(svg, url, note) {
+  return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">' +
+    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\';">' +
+    '<style>' +
+    'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+    'font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;' +
+    'background:var(--vscode-editor-background,#1e1e1e);color:var(--vscode-foreground,#ccc)}' +
+    '.box{text-align:center;padding:28px}' +
+    'h1{font-size:16px;margin:0 0 4px}' +
+    '.sub{font-size:12px;opacity:.65;margin:0 0 18px}' +
+    '.qr{display:inline-block;background:#fff;border-radius:14px;padding:6px;line-height:0;' +
+    'box-shadow:0 14px 40px rgba(0,0,0,.35)}' +
+    '.qr svg{width:240px;height:240px}' +
+    '.url{margin-top:16px;font:12px ui-monospace,Menlo,monospace;user-select:all;' +
+    'background:rgba(128,128,128,.14);border:1px solid rgba(128,128,128,.25);border-radius:8px;padding:9px 13px;display:inline-block}' +
+    '.note{margin-top:14px;font-size:11.5px;opacity:.6;max-width:340px;margin-left:auto;margin-right:auto}' +
+    '</style></head><body><div class="box">' +
+    '<h1>📱 휴대폰으로 보기</h1>' +
+    '<p class="sub">같은 Wi-Fi에 연결된 기기에서 카메라로 스캔하세요.</p>' +
+    '<div class="qr">' + svg + '</div>' +
+    '<div><span class="url">' + escapeHtml(url) + '</span></div>' +
+    (note ? '<p class="note">⚠️ ' + escapeHtml(note) + '</p>' : '') +
+    '<p class="note">이 기능은 미리보기 서버를 로컬 네트워크에 공개합니다. 끝나면 설정에서 「네트워크 공개」를 꺼 주세요.</p>' +
+    '</div></body></html>';
+}
+
 module.exports = {
-  iframeShell, settingsShell, loadingShell, fallbackPage,
+  iframeShell, settingsShell, loadingShell, fallbackPage, qrShell,
   escapeHtml, getNonce, settingsCss, settingsRows, settingsControlsScript, icon
 };

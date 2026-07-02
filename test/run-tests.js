@@ -272,6 +272,35 @@ function check(name, cond) {
     ext.deactivate();
   }
 
+  // 7c) QR 명령: 미리보기 없으면 안내, 있으면 네트워크 공개 경고
+  {
+    console.log('\n[7c] QR 명령(휴대폰으로 보기)');
+    mock.__reset();
+    const ext = loadExtFresh();
+    ext.activate(fakeContext());
+    await tick(10);
+    check('showQr 명령 등록됨', typeof mock.__state.commands['htmlViewer.showQr'] === 'function');
+    await mock.__runCommand('htmlViewer.showQr');
+    check('미리보기 없으면 안내 메시지', mock.__state.infoMessages.some((m) => m.includes('미리보기')));
+    ext.deactivate();
+
+    // 미리보기 열린 상태 → 네트워크 공개 확인 경고가 떠야 함(목은 취소 반환)
+    mock.__reset();
+    const dir = tmpDir();
+    fs.writeFileSync(path.join(dir, 'index.html'), '<html><body>Q</body></html>');
+    const doc = fakeDoc(path.join(dir, 'index.html'), () => '<html><body>Q</body></html>');
+    mock.__state.workspaceFolderRoot = dir;
+    mock.__state.textDocuments = [doc];
+    mock.__state.activeTextEditor = { document: doc };
+    const ext2 = loadExtFresh();
+    ext2.activate(fakeContext());
+    await tick();
+    await mock.__runCommand('htmlViewer.showQr');
+    check('네트워크 공개 경고 표시(opt-in)', (mock.__state.warnMessages || []).some((m) => m.includes('공개')));
+    check('취소하면 설정 안 바뀜', !mock.__state.configUpdates.some((u) => u.key === 'htmlViewer.allowNetworkPreview'));
+    ext2.deactivate();
+  }
+
   // 8) 순수 유틸/셸
   {
     console.log('\n[8] 유틸 함수');

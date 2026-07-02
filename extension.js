@@ -1,6 +1,8 @@
 // @ts-check
 const vscode = require('vscode');
 const path = require('path');
+const os = require('os');
+const qr = require('./qr');
 const { PreviewServer } = require('./server');
 const shell = require('./shell');
 
@@ -18,6 +20,8 @@ let serverRoot;
 let statusBar;
 /** @type {import('vscode').WebviewPanel | undefined} 설정 패널 */
 let settingsPanel;
+/** @type {import('vscode').WebviewPanel | undefined} QR 패널 */
+let qrPanel;
 /** @type {any} 리로드 디바운스 타이머 */
 let reloadTimer;
 
@@ -55,6 +59,7 @@ function currentSettings() {
     showErrorOverlay: cfg.get('showErrorOverlay', true),
     qualityChecks: cfg.get('qualityChecks', false),
     spaFallback: cfg.get('spaFallback', false),
+    allowNetworkPreview: cfg.get('allowNetworkPreview', false),
     autoRefresh: cfg.get('autoRefresh', 'onType'),
     refreshDelay: cfg.get('refreshDelay', 300)
   };
@@ -114,9 +119,12 @@ function isUnderRoot(doc) {
   } catch (_) { return false; }
 }
 
+let serverStarting = null; // 동시 호출 경합 방지
+
 /** 루트에 맞는 서버를 보장(있으면 재사용, 루트가 바뀌면 재시작). */
 async function ensureServer(root) {
   if (server && serverRoot === root) return server;
+  if (serverStarting) { try { await serverStarting; } catch (_) { /* noop */ } if (server && serverRoot === root) return server; }
   if (server) { server.dispose(); server = undefined; serverRoot = undefined; }
   const s = new PreviewServer(root);
   // 열린 에디터 버퍼(저장 안 한 변경) 우선 제공
@@ -142,11 +150,60 @@ async function ensureServer(root) {
     try { consoleChannel.appendLine('[' + level + '] ' + String(entry.msg == null ? '' : entry.msg)); }
     catch (_) { /* noop */ }
   };
-  await s.start(getConfig().get('port', 0));
+  const allowNet = getConfig().get('allowNetworkPreview', false);
+  serverStarting = s.start(getConfig().get('port', 0), allowNet ? '0.0.0.0' : '127.0.0.1');
+  try { await serverStarting; } finally { serverStarting = null; }
   server = s;
   serverRoot = root;
-  dbg('server started root=' + root + ' port=' + s.port);
+  dbg('server started root=' + root + ' host=' + s.host + ' port=' + s.port);
   return s;
+}
+
+/** 첫 번째 로컬 네트워크 IPv4 주소. */
+function lanIp() {
+  try {
+    const ifs = os.networkInterfaces();
+    for (const k of Object.keys(ifs)) {
+      for (const it of ifs[k] || []) {
+        if (it && it.family === 'IPv4' && !it.internal) return it.address;
+      }
+    }
+  } catch (_) { /* noop */ }
+  return null;
+}
+
+/** QR 패널: 같은 Wi-Fi 기기에서 미리보기를 열 수 있는 주소를 보여준다. */
+async function showQrPanel(context) {
+  if (!panel || !server) {
+    vscode.window.showInformationMessage('HTML Live Viewer: 먼저 미리보기를 여세요.');
+    return;
+  }
+  const cfg = getConfig();
+  if (!cfg.get('allowNetworkPreview', false)) {
+    const pick = await vscode.window.showWarningMessage(
+      '휴대폰에서 보려면 미리보기 서버를 같은 네트워크에 공개해야 합니다. 같은 Wi-Fi의 기기가 워크스페이스 파일에 접근할 수 있게 됩니다. 공개할까요?',
+      '공개하고 QR 표시', '취소'
+    );
+    if (pick !== '공개하고 QR 표시') return;
+    try { await cfg.update('allowNetworkPreview', true, vscode.ConfigurationTarget.Global); } catch (_) { /* noop */ }
+    if (server) { server.dispose(); server = undefined; serverRoot = undefined; }
+    if (panel) await panel.render();
+    if (!server) return;
+  }
+  const ip = lanIp();
+  let pathname = '/';
+  try { pathname = new URL(panel._url).pathname || '/'; } catch (_) { /* noop */ }
+  const url = 'http://' + (ip || '127.0.0.1') + ':' + server.port + pathname;
+  let svg = '';
+  try { svg = qr.toSvg(qr.encode(url)); } catch (e) { dbg('qr error: ' + e); }
+  const html = shell.qrShell(svg, url, ip ? '' : '네트워크 IP를 찾지 못해 로컬 주소만 표시합니다.');
+  if (qrPanel) {
+    try { qrPanel.webview.html = html; qrPanel.reveal(vscode.ViewColumn.Beside, true); return; }
+    catch (_) { qrPanel = undefined; }
+  }
+  qrPanel = vscode.window.createWebviewPanel('htmlViewer.qr', '휴대폰으로 보기', vscode.ViewColumn.Beside, {});
+  qrPanel.webview.html = html;
+  qrPanel.onDidDispose(guard(() => { qrPanel = undefined; }), null, context.subscriptions);
 }
 
 let reloadFull = false; // 대기 중 배치에 CSS 외 변경이 섞이면 전체 리로드
@@ -231,7 +288,8 @@ function activate(context) {
     vscode.commands.registerCommand('htmlViewer.showConsole', () => {
       if (consoleChannel) consoleChannel.show(true);
     }),
-    vscode.commands.registerCommand('htmlViewer.openSettings', () => openSettings(context))
+    vscode.commands.registerCommand('htmlViewer.openSettings', () => openSettings(context)),
+    vscode.commands.registerCommand('htmlViewer.showQr', () => showQrPanel(context))
   );
 
   const maybeAutoOpen = (editor) => {
@@ -316,6 +374,12 @@ function activate(context) {
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(guard((e) => {
       if (e && e.affectsConfiguration && !e.affectsConfiguration('htmlViewer')) return;
+      if (e && e.affectsConfiguration &&
+          (e.affectsConfiguration('htmlViewer.allowNetworkPreview') || e.affectsConfiguration('htmlViewer.port'))) {
+        if (server) { server.dispose(); server = undefined; serverRoot = undefined; }
+        if (panel) panel.render();
+        return;
+      }
       if (!server) return;
       const cfg = getConfig();
       server.forwardConsole = cfg.get('forwardConsole', true);

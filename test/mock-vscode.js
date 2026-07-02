@@ -108,6 +108,7 @@ const vscode = {
       return { text: '', tooltip: '', command: '', show() {}, hide() {}, dispose() {} };
     },
     showInformationMessage(msg) { state.infoMessages.push(msg); return Promise.resolve(); },
+    showWarningMessage(msg) { (state.warnMessages = state.warnMessages || []).push(msg); return Promise.resolve(undefined); },
     showTextDocument(doc, opts) { state.shownDoc = { doc, opts }; return Promise.resolve({}); }
   },
   workspace: {
