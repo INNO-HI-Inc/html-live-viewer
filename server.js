@@ -42,10 +42,16 @@ const TEXT_EXT = new Set(['.html', '.htm', '.css', '.js', '.mjs', '.json', '.map
  *  - 콘솔/에러를 출력 패널로 전달(forwardConsole)
  *  - 에러 발생 시 화면 하단에 빨간 배너 오버레이(showErrorOverlay)
  */
-function clientSnippet(forwardConsole, showErrorOverlay) {
+function clientSnippet(forwardConsole, showErrorOverlay, qualityChecks) {
   const lr =
-    'try{var es=new EventSource("/__livereload");' +
-    'es.onmessage=function(e){if(e.data==="reload"){location.reload();}};}catch(e){}';
+    'try{var es=new EventSource("/__livereload");es.onmessage=function(e){' +
+    // CSS만 바뀌면 스타일시트 href만 교체 → 전체 리로드 없이 스크롤/입력/상태 보존
+    'if(e.data==="css"){try{var L=document.querySelectorAll("link[rel=stylesheet]");' +
+    'for(var i=0;i<L.length;i++){var u=L[i].href.split("?")[0];L[i].href=u+"?hlv="+Date.now();}}catch(_){location.reload();}}' +
+    'else{location.reload();}};}catch(e){}' +
+    // 전체 리로드 시 스크롤 위치 보존
+    'try{var SK="__hlv_sy__";addEventListener("scroll",function(){try{sessionStorage.setItem(SK,String(scrollY))}catch(_){}} ,{passive:true});' +
+    'addEventListener("load",function(){try{var y=sessionStorage.getItem(SK);if(y)scrollTo(0,parseFloat(y)||0)}catch(_){}} );}catch(e){}';
 
   let hooks = '';
   if (forwardConsole || showErrorOverlay) {
@@ -54,6 +60,7 @@ function clientSnippet(forwardConsole, showErrorOverlay) {
       'function str(a){try{return Array.prototype.map.call(a,function(x){' +
       'try{return typeof x==="object"?JSON.stringify(x):String(x);}catch(e){return String(x);}}).join(" ");}catch(e){return "";}}' +
       'function beacon(l,m){try{if(FC)navigator.sendBeacon("/__log",JSON.stringify({level:l,msg:m}));}catch(e){}}' +
+      'var EN=0;function bump(){EN++;try{parent.postMessage({__hlv:"errcount",n:EN},"*")}catch(_){}}' +
       // 원문 에러 → 사람이 이해하기 쉬운 설명
       'function explain(m){m=m||"";var x;' +
       'if(/is not defined/.test(m)){x=(m.match(/(\\w+) is not defined/)||[])[1]||"그것";' +
@@ -83,7 +90,7 @@ function clientSnippet(forwardConsole, showErrorOverlay) {
       'background:rgba(255,90,77,0.16);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:12px 12px 0 0";' +
       'box._t=document.createElement("span");h.appendChild(box._t);' +
       'var x=document.createElement("span");x.textContent="✕";x.style.cssText="cursor:pointer;padding:0 6px";' +
-      'x.onclick=function(){box.remove();box=null;n=0;};h.appendChild(x);box.appendChild(h);' +
+      'x.onclick=function(){box.remove();box=null;n=0;EN=0;try{parent.postMessage({__hlv:"errcount",n:0},"*")}catch(_){}};h.appendChild(x);box.appendChild(h);' +
       'box._l=document.createElement("div");box.appendChild(box._l);' +
       'box._seen={};box._order=[];(document.body||document.documentElement).appendChild(box);}' +
       'n++;box._t.textContent="⚠️ 문제가 "+n+"개 있어요";' +
@@ -92,25 +99,43 @@ function clientSnippet(forwardConsole, showErrorOverlay) {
       'if(box._seen[key]){var it=box._seen[key];it.k++;it.b.textContent="×"+it.k;it.b.style.display="inline-block";return;}' +
       'var r=document.createElement("div");r.style.cssText="padding:10px 12px;border-top:1px solid rgba(255,255,255,.18);position:relative";' +
       'var f=document.createElement("div");f.style.cssText="font-weight:600;margin-bottom:4px;padding-right:30px";' +
-      'f.textContent=(type==="console"?"코드에서 직접 남긴 오류 메시지예요.":explain(m));' +
+      'f.textContent=(type==="console"?"코드에서 직접 남긴 오류 메시지예요.":(type==="resource"?"파일(이미지·CSS·JS 등)을 불러오지 못했어요. 경로가 맞는지, 파일이 있는지 확인하세요.":explain(m)));' +
       'var d=document.createElement("div");d.style.cssText="font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;opacity:.8;white-space:pre-wrap;word-break:break-word";d.textContent=m;' +
       'var b=document.createElement("span");b.style.cssText="position:absolute;top:9px;right:10px;font-size:11px;background:rgba(255,255,255,.22);border-radius:8px;padding:1px 6px;display:none";' +
       'r.appendChild(f);r.appendChild(d);r.appendChild(b);box._l.appendChild(r);' +
+      // 에러 행 클릭 → 부모(웹뷰 셸)로 알려 에디터 소스로 이동
+      'if(type!=="console"){r.style.cursor="pointer";r.title="클릭 → 소스로 이동";' +
+      'r.addEventListener("click",function(){try{parent.postMessage({__hlv:"open",raw:m},"*");}catch(_){}} );}' +
       'box._seen[key]={k:1,b:b};box._order.push({key:key,r:r});' +
       // 최대 20개 유지 (오래된 것부터 제거)
       'if(box._order.length>20){var old=box._order.shift();old.r.remove();delete box._seen[old.key];}}catch(e){}}' +
       // 후킹
       '["log","info","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){' +
-      'var m=str(arguments);beacon(k,m);if(k==="error")overlay(m,"console");if(o)o.apply(console,arguments);};});' +
-      'window.addEventListener("error",function(e){var m=(e.message||"Error")+(e.filename?" ("+e.filename+":"+(e.lineno||0)+")":"");beacon("error",m);overlay(m,"runtime");});' +
-      'window.addEventListener("unhandledrejection",function(e){var m="Unhandled rejection: "+((e.reason&&e.reason.message)||e.reason);beacon("error",m);overlay(m,"runtime");});';
+      'var m=str(arguments);beacon(k,m);if(k==="error"){overlay(m,"console");bump();}if(o)o.apply(console,arguments);};});' +
+      'window.addEventListener("error",function(e){var m=(e.message||"Error")+(e.filename?" ("+e.filename+":"+(e.lineno||0)+")":"");beacon("error",m);overlay(m,"runtime");bump();});' +
+      'window.addEventListener("unhandledrejection",function(e){var m="Unhandled rejection: "+((e.reason&&e.reason.message)||e.reason);beacon("error",m);overlay(m,"runtime");bump();});' +
+      // 리소스 로드 실패(이미지/CSS/JS 404 등) — 캡처 단계로 잡는다
+      'window.addEventListener("error",function(e){var t=e.target;if(t&&t!==window&&(t.src||t.href)){var u=t.src||t.href;var m="리소스 로드 실패: "+u;beacon("error",m);overlay(m,"resource");bump();}},true);';
   }
-  return '\n<script data-hlv-client>(function(){' + lr + hooks + '})();</script>';
+  let qc = '';
+  if (qualityChecks) {
+    qc =
+      'addEventListener("load",function(){try{' +
+      'function qb(m){try{navigator.sendBeacon("/__log",JSON.stringify({level:"warn",msg:m}))}catch(e){}}' +
+      'var im=document.querySelectorAll("img:not([alt])");if(im.length)qb("[품질] alt 없는 이미지 "+im.length+"개");' +
+      'var as=document.querySelectorAll("a[href]"),ck=0;' +
+      'Array.prototype.forEach.call(as,function(a){if(ck>=50)return;var h=a.getAttribute("href");' +
+      'if(!h||/^(https?:|mailto:|tel:|#|javascript:|data:)/i.test(h))return;ck++;' +
+      'fetch(h,{method:"HEAD"}).then(function(r){if(!r.ok)qb("[품질] 깨진 링크: "+h+" ("+r.status+")");})' +
+      '.catch(function(){qb("[품질] 링크 확인 실패: "+h);});});' +
+      '}catch(e){}});';
+  }
+  return '\n<script data-hlv-client>(function(){' + lr + hooks + qc + '})();</script>';
 }
 
-function injectClient(html, forwardConsole, showErrorOverlay) {
+function injectClient(html, forwardConsole, showErrorOverlay, qualityChecks) {
   if (html.indexOf('data-hlv-client') !== -1) return html; // 중복 방지
-  const snip = clientSnippet(forwardConsole, showErrorOverlay);
+  const snip = clientSnippet(forwardConsole, showErrorOverlay, qualityChecks);
   if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, snip + '</body>');
   return html + snip;
 }
@@ -127,18 +152,26 @@ class PreviewServer {
     this.forwardConsole = true;
     /** 에러 발생 시 화면 하단에 배너 오버레이를 띄울지 */
     this.showErrorOverlay = true;
+    /** 로드 시 품질 점검(깨진 링크·alt 누락)을 실행할지 */
+    this.qualityChecks = false;
+    /** 알 수 없는 경로를 index.html로 폴백(SPA) */
+    this.spaFallback = false;
     /** @type {null | ((entry: {level: string, msg: string}) => void)} 미리보기 콘솔 로그 수신 훅 */
     this.onClientLog = null;
   }
 
-  start() {
+  start(port) {
     return new Promise((resolve, reject) => {
       this.server = http.createServer((req, res) => {
         try { this._handle(req, res); }
         catch (e) { try { res.writeHead(500); res.end('Server error'); } catch (_) {} }
       });
-      this.server.on('error', reject);
-      this.server.listen(0, '127.0.0.1', () => {
+      // 고정 포트가 사용 중이면 임의 포트로 폴백
+      this.server.on('error', (e) => {
+        if (port && e && e.code === 'EADDRINUSE') { try { this.server.listen(0, '127.0.0.1'); } catch (_) { reject(e); } }
+        else reject(e);
+      });
+      this.server.listen(port || 0, '127.0.0.1', () => {
         this.port = this.server.address().port;
         resolve(this.port);
       });
@@ -151,12 +184,16 @@ class PreviewServer {
     if (this.server) { try { this.server.close(); } catch (_) {} this.server = null; }
   }
 
-  /** 연결된 모든 미리보기에 새로고침 신호를 보낸다. */
-  notifyReload() {
+  /** 연결된 모든 미리보기에 신호를 보낸다. kind==='css'면 스타일시트만 교체. */
+  notify(kind) {
+    const data = kind === 'css' ? 'css' : 'reload';
     for (const c of this.clients) {
-      try { c.write('data: reload\n\n'); } catch (_) {}
+      try { c.write('data: ' + data + '\n\n'); } catch (_) {}
     }
   }
+
+  /** 전체 새로고침 (하위 호환). */
+  notifyReload() { this.notify('full'); }
 
   _handle(req, res) {
     let pathname;
@@ -190,13 +227,27 @@ class PreviewServer {
     }
 
     if (typeof override === 'string') {
-      const body = isHtml ? injectClient(override, this.forwardConsole, this.showErrorOverlay) : override;
+      const body = isHtml ? injectClient(override, this.forwardConsole, this.showErrorOverlay, this.qualityChecks) : override;
       res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-store' });
       res.end(body);
       return;
     }
 
+    const looksLikeRoute = () => {
+      try { return !path.extname(pathname) || /text\/html/i.test(req.headers.accept || ''); }
+      catch (_) { return false; }
+    };
     const notFound = () => {
+      // SPA 폴백: 확장자 없는 경로(클라이언트 라우팅)는 index.html로
+      if (this.spaFallback && looksLikeRoute()) {
+        const idx = path.join(this.root, 'index.html');
+        return fs.readFile(idx, (err, data) => {
+          if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Not Found: ' + rel); return; }
+          const body = injectClient(data.toString('utf8'), this.forwardConsole, this.showErrorOverlay, this.qualityChecks);
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+          res.end(body);
+        });
+      }
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Not Found: ' + rel);
     };
@@ -205,7 +256,7 @@ class PreviewServer {
     if (isHtml) {
       fs.readFile(abs, (err, data) => {
         if (err) return notFound();
-        const body = injectClient(data.toString('utf8'), this.forwardConsole, this.showErrorOverlay);
+        const body = injectClient(data.toString('utf8'), this.forwardConsole, this.showErrorOverlay, this.qualityChecks);
         res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-store' });
         res.end(body);
       });

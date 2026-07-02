@@ -14,7 +14,8 @@
 
   <button id="a">1) 정의 안 된 함수 호출</button><br>
   <button id="b">2) console.error 출력</button><br>
-  <button id="c">3) 처리 안 된 Promise 거부</button>
+  <button id="c">3) 처리 안 된 Promise 거부</button><br>
+  <button id="d">4) 이미지 로드 실패(404)</button>
 
   <script>
     document.getElementById('a').addEventListener('click', () => {
@@ -25,6 +26,11 @@
     });
     document.getElementById('c').addEventListener('click', () => {
       Promise.reject(new Error('처리 안 된 거부'));
+    });
+    document.getElementById('d').addEventListener('click', () => {
+      const img = document.createElement('img');
+      img.src = 'does-not-exist-' + Date.now() + '.png';   // 404
+      document.body.appendChild(img);
     });
   </script>
 </body>

@@ -14,6 +14,8 @@ function reset() {
   state.findFilesResult = [];
   state.openTextDocumentResult = null;
   state.openTextDocumentError = null;
+  state.openedUri = undefined;
+  state.shownDoc = undefined;
   state.panels = [];
   state.infoMessages = [];
   state.openedExternal = [];
@@ -68,6 +70,9 @@ const vscode = {
   ViewColumn: { Active: -1, Beside: -2, One: 1, Two: 2, Three: 3 },
   StatusBarAlignment: { Left: 1, Right: 2 },
   ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
+  Position: class { constructor(line, character) { this.line = line; this.character = character; } },
+  Range: class { constructor(start, end) { this.start = start; this.end = end; } },
+  Selection: class { constructor(start, end) { this.start = start; this.end = end; } },
   Uri: {
     file(p) { return { scheme: 'file', fsPath: p, toString() { return 'file://' + p; } }; },
     parse(s) { return { scheme: String(s).split(':')[0], fsPath: s, toString() { return s; } }; }
@@ -102,7 +107,8 @@ const vscode = {
     createStatusBarItem() {
       return { text: '', tooltip: '', command: '', show() {}, hide() {}, dispose() {} };
     },
-    showInformationMessage(msg) { state.infoMessages.push(msg); return Promise.resolve(); }
+    showInformationMessage(msg) { state.infoMessages.push(msg); return Promise.resolve(); },
+    showTextDocument(doc, opts) { state.shownDoc = { doc, opts }; return Promise.resolve({}); }
   },
   workspace: {
     getConfiguration(section) {
@@ -140,7 +146,8 @@ const vscode = {
       };
     },
     findFiles() { return Promise.resolve(state.findFilesResult); },
-    openTextDocument() {
+    openTextDocument(uri) {
+      state.openedUri = uri;
       if (state.openTextDocumentError) return Promise.reject(state.openTextDocumentError);
       return Promise.resolve(state.openTextDocumentResult);
     }

@@ -225,9 +225,13 @@ function check(name, cond) {
     await tick();
     const p0 = mock.__state.panels[0];
     const html = p0.webview.html;
-    check('셸에 반응형 툴바(Mobile/Tablet) 포함', /data-w="375"/.test(html) && /data-w="768"/.test(html));
+    check('셸에 반응형 프리셋(기기/폭) 포함', /id="dev"/.test(html) && /value="375"/.test(html));
     check('셸 스크립트는 nonce 사용(CSP)', /script-src 'nonce-/.test(html) && /<script nonce="/.test(html));
     check('미리보기 툴바에 ⚙️ 설정 서랍 포함', html.includes('id="gear"') && html.includes('id="drawer"') && html.includes('class="switch"'));
+    check('툴바에 기기 프리셋/커스텀 폭/줌 포함', html.includes('id="dev"') && html.includes('id="w"') && html.includes('id="zo"') && html.includes('id="zi"'));
+    check('툴바에 하드리로드/배경/그리드 포함', html.includes('id="rl"') && html.includes('id="bgb"') && html.includes('id="grb"') && html.includes('id="gridov"'));
+    check('툴바에 에러 상태 배지 + errcount 처리', html.includes('id="eb"') && html.includes('errcount'));
+    check('에러→소스 점프 브리지 포함', html.includes('__hlv') && html.includes('openSource'));
     const src = iframeSrc(html);
     mock.__runCommand('htmlViewer.copyUrl');
     check('copyUrl 이 미리보기 URL을 클립보드에 복사', mock.__state.clipboard === src);
@@ -235,6 +239,12 @@ function check(name, cond) {
     p0.webview.__fireMessage({ type: 'update', key: 'forwardConsole', value: false });
     check('미리보기 내 설정 변경이 config에 저장됨',
       mock.__state.configUpdates.some((u) => u.key === 'htmlViewer.forwardConsole' && u.value === false));
+    // 에러 → 소스 점프: openSource 메시지 → 파일/줄 열기 (관통)
+    mock.__state.openTextDocumentResult = doc;
+    p0.webview.__fireMessage({ type: 'openSource', raw: 'doSomething is not defined (index.html:14)' });
+    await tick(15);
+    check('openSource가 올바른 파일을 엶', mock.__state.openedUri && /index\.html$/.test(mock.__state.openedUri.fsPath));
+    check('올바른 줄(14→0-index 13)로 이동', mock.__state.shownDoc && mock.__state.shownDoc.opts.selection.start.line === 13);
     ext.deactivate();
   }
 

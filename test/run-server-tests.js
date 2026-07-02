@@ -110,7 +110,17 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms || 30));
       setTimeout(() => resolve(/data:\s*reload/.test(buf)), 400);
     });
     check('reload 신호 수신', got === true);
-    try { sse.req.destroy(); } catch (_) {}
+    // CSS 전용 신호
+    const sse2 = await openSse(port);
+    await tick(20);
+    srv.notify('css');
+    const gotCss = await new Promise((resolve) => {
+      let buf = '';
+      sse2.res.on('data', (c) => { buf += c.toString('utf8'); if (/data:\s*css/.test(buf)) resolve(true); });
+      setTimeout(() => resolve(/data:\s*css/.test(buf)), 400);
+    });
+    check('notify("css") → css 신호 수신', gotCss === true);
+    try { sse.req.destroy(); sse2.req.destroy(); } catch (_) {}
     await tick(30);
     check('연결 종료 후 클라이언트 정리', srv.clients.size === 0);
   }
@@ -161,7 +171,18 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms || 30));
     const on = await get(port, '/index.html');
     check('showErrorOverlay=true 면 오버레이 활성(OV=1)', on.body.includes('data-hlv-err') && on.body.includes('OV=1'));
     check('window.error/rejection 후킹 포함', on.body.includes('addEventListener("error"') && on.body.includes('unhandledrejection'));
+    check('에러 카운트(errcount) 전파 포함', on.body.includes('errcount') && on.body.includes('function bump'));
     check('사람이 읽기 쉬운 설명(explain) 포함', on.body.includes('function explain') && on.body.includes('찾을 수 없어요'));
+    check('CSS 핫리로드 로직 주입', on.body.includes('link[rel=stylesheet]') && on.body.includes('e.data==="css"'));
+    check('스크롤 위치 보존 로직 주입', on.body.includes('__hlv_sy__') && on.body.includes('scrollTo'));
+    check('리소스 로드 실패(캡처) 감지 주입', on.body.includes('리소스 로드 실패') && on.body.includes('"resource"'));
+    // 품질 점검 토글
+    srv.qualityChecks = true;
+    const qcOn = await get(port, '/index.html');
+    check('qualityChecks=true 면 점검 코드 주입', qcOn.body.includes('img:not([alt])') && qcOn.body.includes('깨진 링크'));
+    srv.qualityChecks = false;
+    const qcOff = await get(port, '/index.html');
+    check('qualityChecks=false 면 미주입', !qcOff.body.includes('img:not([alt])'));
     // 주입된 스크립트가 문법적으로 유효한지 검증 (이스케이프 오류 방지)
     const js = (on.body.match(/<script data-hlv-client>([\s\S]*?)<\/script>/) || [])[1] || '';
     let ok = false; try { new Function(js); ok = true; } catch (e) { console.log('    script error:', e.message); }
@@ -170,6 +191,19 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms || 30));
     const off = await get(port, '/index.html');
     check('showErrorOverlay=false 면 오버레이 비활성(OV=0)', on.body.includes('data-hlv-err') && off.body.includes('OV=0'));
     srv.showErrorOverlay = true;
+  }
+
+  // 9) SPA 폴백
+  {
+    console.log('\n[S9] SPA 폴백');
+    const noFb = await get(port, '/some/route');
+    check('폴백 꺼짐: 없는 경로 404', noFb.status === 404);
+    srv.spaFallback = true;
+    const fb = await get(port, '/some/route');
+    check('폴백 켜짐: 확장자 없는 경로 → index.html(200)', fb.status === 200 && fb.body.includes('PAGE_MARK'));
+    const css = await get(port, '/nope.css');
+    check('확장자 있는 없는 파일은 폴백 안 함(404)', css.status === 404);
+    srv.spaFallback = false;
   }
 
   srv.dispose();
