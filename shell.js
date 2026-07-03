@@ -41,7 +41,9 @@ function icon(name) {
     bg: '<circle cx="8" cy="8" r="5.4"/><path d="M8 2.6v10.8A5.4 5.4 0 0 0 8 2.6Z" fill="currentColor" stroke="none"/>',
     grid: '<path d="M2.5 5.6h11M2.5 10.4h11M5.6 2.5v11M10.4 2.5v11"/>',
     sliders: '<path d="M2.5 4.6h5.4M11.6 4.6h1.9M2.5 11.4h2M8.6 11.4h4.9"/><circle cx="9.5" cy="4.6" r="1.6"/><circle cx="6.5" cy="11.4" r="1.6"/>',
-    target: '<circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/><path d="M8 1.2v2.2M8 12.6v2.2M1.2 8h2.2M12.6 8h2.2"/>'
+    target: '<circle cx="8" cy="8" r="5"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/><path d="M8 1.2v2.2M8 12.6v2.2M1.2 8h2.2M12.6 8h2.2"/>',
+    pin: '<path d="M6.2 1.8h3.6M7 1.8v4L4.4 8.5h7.2L9 5.8v-4M8 8.5V14"/>',
+    pause: '<path d="M5.6 3.6v8.8M10.4 3.6v8.8"/>'
   };
   return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" ' +
     'stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (P[name] || '') + '</svg>';
@@ -187,6 +189,8 @@ function iframeShell(url, v) {
     '<button id="bgb" class="ib" title="배경 전환(흰/체커/다크)">' + icon('bg') + '</button>' +
     '<button id="grb" class="ib" title="그리드 오버레이">' + icon('grid') + '</button>' +
     '<button id="ins" class="ib" title="요소 검사 (클릭→소스로 이동)">' + icon('target') + '</button>' +
+    '<button id="pin" class="ib" title="미리보기 고정 (에디터 따라가기 중지)">' + icon('pin') + '</button>' +
+    '<button id="pause" class="ib" title="자동 새로고침 일시정지">' + icon('pause') + '</button>' +
     '</div>' +
     '<span id="dim"></span><span id="eb" title="에러 상태">✓</span>' +
     '<button id="gear" class="ib" title="설정">' + icon('sliders') + '</button></div>' +
@@ -232,6 +236,10 @@ function iframeShell(url, v) {
     'var insB=document.getElementById("ins"),insOn=false;' +
     'insB.addEventListener("click",function(){insOn=!insOn;insB.classList.toggle("on",insOn);' +
     'try{f.contentWindow.postMessage({__hlv:"inspect",on:insOn},"*")}catch(_){}} );' +
+    'var pinB=document.getElementById("pin"),pinOn=false;' +
+    'pinB.addEventListener("click",function(){pinOn=!pinOn;pinB.classList.toggle("on",pinOn);if(api)api.postMessage({type:"pin",on:pinOn});});' +
+    'var pauB=document.getElementById("pause"),pauOn=false;' +
+    'pauB.addEventListener("click",function(){pauOn=!pauOn;pauB.classList.toggle("on",pauOn);if(api)api.postMessage({type:"pause",on:pauOn});});' +
     'var dr=document.getElementById("drawer"),gearB=document.getElementById("gear");' +
     'gearB.addEventListener("click",function(){dr.hidden=!dr.hidden;gearB.classList.toggle("on",!dr.hidden);});' +
     'document.getElementById("gclose").addEventListener("click",function(){dr.hidden=true;gearB.classList.remove("on");});' +
@@ -240,7 +248,7 @@ function iframeShell(url, v) {
     'else if(d.__hlv==="pick"){if(api)api.postMessage({type:"pick",info:d.info});}' +
     'else if(d.__hlv==="inspectOff"){insOn=false;insB.classList.remove("on");}' +
     'else if(d.type==="scrollTo"){try{f.contentWindow.postMessage({__hlv:"scroll",ratio:d.ratio},"*")}catch(_){}}' +
-    'else if(d.__hlv==="errcount"){var eb=document.getElementById("eb");if(eb){' +
+    'else if(d.__hlv==="errcount"){if(api)api.postMessage({type:"errcount",n:d.n});var eb=document.getElementById("eb");if(eb){' +
     'if(d.n>0){eb.textContent="⚠ "+d.n;eb.classList.add("bad");}else{eb.textContent="✓";eb.classList.remove("bad");}}}});' +
     settingsControlsScript() +
     '})();</script></body></html>';

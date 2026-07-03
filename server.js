@@ -61,6 +61,7 @@ function clientSnippet(forwardConsole, showErrorOverlay, qualityChecks) {
     'addEventListener("mouseover",function(e){if(!INS)return;hlvClearOl();var t=e.target;if(!t||!t.style)return;olEl=t;t.__hlvOl=t.style.outline;t.style.outline="2px solid #ff5f4d";},true);' +
     'addEventListener("click",function(e){if(!INS)return;e.preventDefault();e.stopPropagation();var t=e.target||{};' +
     'var info={tag:(t.tagName||"").toLowerCase(),id:t.id||"",cls:(typeof t.className==="string"?t.className.trim():"").split(" ")[0]||"",text:((t.textContent||"").trim()).slice(0,40)};' +
+    'try{var hlvL=document.getElementsByTagName(info.tag||"*"),hlvN=0;for(var hi=0;hi<hlvL.length;hi++){if(hlvL[hi]===t){hlvN=hi;break;}}info.nth=hlvN;}catch(_){info.nth=0;}' +
     'INS=false;hlvClearOl();' +
     'try{parent.postMessage({__hlv:"pick",info:info},"*")}catch(_){}' +
     'try{parent.postMessage({__hlv:"inspectOff"},"*")}catch(_){}},true);}catch(e){}';

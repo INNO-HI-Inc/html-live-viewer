@@ -207,6 +207,7 @@ function check(name, cond) {
     await tick(40);
     const lines = (mock.__state.outputs['HTML Preview Console'] || []).join('\n');
     check('콘솔 로그가 출력 패널로 전달됨', lines.includes('HELLO_CONSOLE') && lines.includes('[WARN]'));
+    check('타임스탬프 프리픽스', (mock.__state.outputs['HTML Preview Console'] || []).some((l) => /^\[\d{2}:\d{2}:\d{2}\]/.test(l)));
     ext.deactivate();
   }
 
@@ -300,6 +301,67 @@ function check(name, cond) {
     const sc = posted.find((m) => m && m.type === 'scrollTo');
     check('스크롤 동기화 → scrollTo(ratio 0.5)', !!sc && Math.abs(sc.ratio - 0.5) < 0.01);
     check('셸에 검사 버튼/브리지 포함', p0.webview.html.includes('id="ins"') && p0.webview.html.includes('scrollTo'));
+    ext.deactivate();
+  }
+
+  // 7b3) nth 점프 · 핀 · 일시정지 · 상태바 에러 (관통)
+  {
+    console.log('\n[7b3] nth 점프 · 핀 · 일시정지 · 상태바');
+    mock.__reset();
+    const dir = tmpDir();
+    const C = '<html>\n<body>\n<li>one</li>\n<li>two</li>\n<li>three</li>\n</body>\n</html>';
+    fs.writeFileSync(path.join(dir, 'index.html'), C);
+    const doc = fakeDoc(path.join(dir, 'index.html'), () => C);
+    mock.__state.workspaceFolderRoot = dir;
+    mock.__state.textDocuments = [doc];
+    mock.__state.activeTextEditor = { document: doc };
+    const ext = loadExtFresh();
+    ext.activate(fakeContext());
+    await tick();
+    const p0 = mock.__state.panels[0];
+    check('툴바에 핀/일시정지 버튼', p0.webview.html.includes('id="pin"') && p0.webview.html.includes('id="pause"'));
+    // nth: 3번째 li(줄 4)로 점프
+    p0.webview.__fireMessage({ type: 'pick', info: { tag: 'li', id: '', cls: '', text: 'three', nth: 2 } });
+    await tick(10);
+    check('nth 기반 점프(3번째 li → 줄 4)', mock.__state.shownDoc && mock.__state.shownDoc.opts.selection.start.line === 4);
+    // 핀: 다른 HTML로 포커스해도 대상 유지
+    p0.webview.__fireMessage({ type: 'pin', on: true });
+    const other = fakeDoc(path.join(dir, 'b.html'), () => '<html><body>B</body></html>');
+    mock.__fireActiveEditor({ document: other });
+    await tick(40);
+    check('핀 고정 중엔 따라가지 않음', p0.title === '미리보기: index.html');
+    p0.webview.__fireMessage({ type: 'pin', on: false });
+    // 일시정지: 실제 SSE로 신호 유무 관찰
+    const src = iframeSrc(p0.webview.html);
+    const u = new URL(origin(src) + '/__livereload');
+    const buf = { s: '' };
+    const sseReq = http.get({ host: u.hostname, port: u.port, path: u.pathname }, (res) => {
+      res.on('data', (c) => { buf.s += c.toString('utf8'); });
+    });
+    await tick(80);
+    mock.__fireSaveDoc(doc);
+    await tick(150);
+    check('저장 → 리로드 신호 수신', /data:\s*(reload|css)/.test(buf.s));
+    buf.s = '';
+    p0.webview.__fireMessage({ type: 'pause', on: true });
+    mock.__fireSaveDoc(doc);
+    await tick(200);
+    check('일시정지 중엔 신호 없음', !/data:/.test(buf.s));
+    p0.webview.__fireMessage({ type: 'pause', on: false });
+    await tick(150);
+    check('재개 시 밀린 변경 즉시 반영(리로드)', /data:\s*(reload|css)/.test(buf.s));
+    // 악성 postMessage 방어: RegExp 메타문자 태그 → 예외 없이 무시, 이후 정상 동작
+    p0.webview.__fireMessage({ type: 'pick', info: { tag: 'li(*+', id: '', cls: '', text: '', nth: 1e9 } });
+    await tick(10);
+    p0.webview.__fireMessage({ type: 'pick', info: { tag: 'li', id: '', cls: '', text: '', nth: 0 } });
+    await tick(10);
+    check('악성 pick 무해 + 이후 정상 점프', mock.__state.shownDoc && mock.__state.shownDoc.opts.selection.start.line === 2);
+    // 상태바 에러 카운트
+    p0.webview.__fireMessage({ type: 'errcount', n: 3 });
+    await tick(10);
+    const sb = (mock.__state.statusBars || [])[0];
+    check('상태바에 에러 수 표시', !!sb && /3/.test(sb.text));
+    try { sseReq.destroy(); } catch (_) {}
     ext.deactivate();
   }
 

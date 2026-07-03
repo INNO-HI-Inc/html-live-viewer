@@ -24,6 +24,7 @@ function reset() {
   state.configUpdates = [];          // config.update 호출 기록
   state.contextSet = {};
   state.commands = {};
+  state.statusBars = [];
   state.onActiveEditor = [];
   state.onChangeDoc = [];
   state.onSaveDoc = [];
@@ -107,7 +108,9 @@ const vscode = {
       };
     },
     createStatusBarItem() {
-      return { text: '', tooltip: '', command: '', show() {}, hide() {}, dispose() {} };
+      const it = { text: '', tooltip: '', command: '', show() {}, hide() {}, dispose() {} };
+      (state.statusBars = state.statusBars || []).push(it);
+      return it;
     },
     showInformationMessage(msg) { state.infoMessages.push(msg); return Promise.resolve(); },
     showWarningMessage(msg) { (state.warnMessages = state.warnMessages || []).push(msg); return Promise.resolve(undefined); },

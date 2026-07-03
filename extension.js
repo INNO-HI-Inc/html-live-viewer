@@ -110,6 +110,20 @@ function jumpToPick(info) {
     const findLine = (pred) => { for (let i = 0; i < lines.length; i++) if (pred(lines[i])) return i; return -1; };
     let line = -1;
     if (info.id) line = findLine((l) => l.includes('id="' + info.id + '"') || l.includes("id='" + info.id + "'"));
+    if (line < 0 && info.tag && typeof info.nth === 'number' && info.nth >= 0) {
+      // 같은 태그 중 몇 번째인지(DOM 순서)로 소스 줄을 센다 — 반복 요소에 정확
+      try {
+        const safeTag = String(info.tag).replace(/[^a-z0-9-]/gi, '');
+        if (safeTag) {
+          const re = new RegExp('<' + safeTag + '(?=[\\s>/])', 'gi');
+          let count = 0;
+          for (let i = 0; i < lines.length && line < 0; i++) {
+            const mm = lines[i].match(re);
+            if (mm) { if (count + mm.length > info.nth) line = i; count += mm.length; }
+          }
+        }
+      } catch (_) { /* noop */ }
+    }
     if (line < 0 && info.cls) line = findLine((l) => l.includes('<' + info.tag) && l.includes(info.cls));
     if (line < 0 && info.text) { const t = info.text.slice(0, 24); if (t.length >= 3) line = findLine((l) => l.includes(t)); }
     if (line < 0 && info.tag) line = findLine((l) => l.includes('<' + info.tag));
@@ -166,7 +180,8 @@ async function ensureServer(root) {
   s.onClientLog = (entry) => {
     if (!consoleChannel || !entry) return;
     const level = String(entry.level || 'log').toUpperCase();
-    try { consoleChannel.appendLine('[' + level + '] ' + String(entry.msg == null ? '' : entry.msg)); }
+    const ts = new Date().toTimeString().slice(0, 8);
+    try { consoleChannel.appendLine('[' + ts + '] [' + level + '] ' + String(entry.msg == null ? '' : entry.msg)); }
     catch (_) { /* noop */ }
   };
   const allowNet = getConfig().get('allowNetworkPreview', false);
@@ -254,7 +269,8 @@ function reloadNow(kind) {
 function updateStatusBar() {
   if (!statusBar) return;
   if (server && panel) {
-    statusBar.text = '$(open-preview) 미리보기 :' + server.port;
+    const errs = (panel && panel._errs) | 0;
+    statusBar.text = '$(open-preview) 미리보기 :' + server.port + (errs > 0 ? '  $(warning) ' + errs : '');
     statusBar.tooltip = 'HTML Live Viewer 실행 중 — 클릭하면 미리보기로 이동';
     statusBar.show();
   } else {
@@ -364,6 +380,7 @@ function activate(context) {
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(guard((editor) => {
       if (!panel) { maybeAutoOpen(editor); return; }
+      if (panel._pinned) return; // 핀 고정 중에는 따라가지 않음
       if (!getConfig().get('followActiveEditor', true)) return;
       if (editor && isHtml(editor.document)) panel.setSource(editor.document);
     }))
@@ -373,6 +390,7 @@ function activate(context) {
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument(guard((e) => {
       if (!panel || !server) return;
+      if (panel._paused) return;
       if (getConfig().get('autoRefresh', 'onType') !== 'onType') return;
       if (isUnderRoot(e.document)) {
         scheduleReload(getConfig().get('refreshDelay', 300), isCssFile(e.document.fileName) ? 'css' : 'full');
@@ -384,6 +402,7 @@ function activate(context) {
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument(guard((doc) => {
       if (!panel || !server) return;
+      if (panel._paused) return;
       if (getConfig().get('autoRefresh', 'onType') === 'off') return;
       reloadNow(doc && isCssFile(doc.fileName) ? 'css' : 'full');
     }))
@@ -429,6 +448,7 @@ function activate(context) {
     const watcher = vscode.workspace.createFileSystemWatcher('**/*');
     const onFs = guard((uri) => {
       if (!panel || !server) return;
+      if (panel._paused) return;
       if (getConfig().get('autoRefresh', 'onType') === 'off') return;
       let p;
       try {
@@ -493,6 +513,14 @@ class PreviewPanel {
       guard((m) => {
         if (m && m.type === 'openSource') { openSourceFromPreview(m.raw); return; }
         if (m && m.type === 'pick') { jumpToPick(m.info); return; }
+        if (m && m.type === 'pin') { this._pinned = !!m.on; return; }
+        if (m && m.type === 'pause') {
+          const was = this._paused;
+          this._paused = !!m.on;
+          if (was && !this._paused) reloadNow('full'); // 정지 중 밀린 변경 반영
+          return;
+        }
+        if (m && m.type === 'errcount') { this._errs = m.n | 0; updateStatusBar(); return; }
         applySettingMessage(m);
       }), null, context.subscriptions
     );
@@ -532,6 +560,9 @@ class PreviewPanel {
   }
 
   async render() {
+    // 툴바가 새로 그려지므로 세션 토글 상태도 함께 초기화 (UI와 상태 일치)
+    this._pinned = false;
+    this._paused = false;
     const doc = this.sourceDoc;
     const root = rootForDoc(doc);
     if (!root || !doc.uri || doc.uri.scheme !== 'file') { this._setDirect(doc); return; }

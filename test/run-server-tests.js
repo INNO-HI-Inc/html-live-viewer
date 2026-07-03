@@ -224,6 +224,7 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms || 30));
     const on = await get(port, '/index.html');
     check('inspect/pick 코드 주입', on.body.includes('__hlv==="inspect"') && on.body.includes('"pick"'));
     check('scroll 수신 코드 주입', on.body.includes('__hlv==="scroll"'));
+    check('nth(몇 번째 요소) 계산 주입', on.body.includes('info.nth='));
     const js = (on.body.match(/<script data-hlv-client>([\s\S]*?)<\/script>/) || [])[1] || '';
     let ok = false; try { new Function(js); ok = true; } catch (e) { console.log('    err:', e.message); }
     check('주입 스크립트 문법 유효(재검증)', ok);
