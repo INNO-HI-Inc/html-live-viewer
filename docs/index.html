@@ -83,12 +83,12 @@
   .techs span b{color:var(--acc2);font-weight:700}
 
   /* mascot — 로고 스쿼클 캐릭터 (SVG) */
-  .eyewrap{display:flex;justify-content:center;margin-bottom:26px}
+  .eyewrap{display:flex;justify-content:center;margin-bottom:34px}
   .mascot{position:relative;cursor:pointer;user-select:none;line-height:0}
   .mascot svg{overflow:visible}
   .mascot .bob{animation:efloat 5.5s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
   @keyframes efloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
-  .mascot .glowbg{position:absolute;left:50%;top:46%;width:360px;height:300px;transform:translate(-50%,-50%);
+  .mascot .glowbg{position:absolute;left:50%;top:46%;width:660px;height:560px;transform:translate(-50%,-50%);
     background:radial-gradient(closest-side,rgba(241,101,41,.34),transparent 72%);filter:blur(30px);z-index:-1;pointer-events:none}
   .gshadow{transform-box:fill-box;transform-origin:center;animation:gsh 5.5s ease-in-out infinite}
   @keyframes gsh{0%,100%{transform:scaleX(1);opacity:.32}50%{transform:scaleX(.82);opacity:.2}}
@@ -97,7 +97,7 @@
   #lidT{transform-origin:center top}
   #lidB{transform-origin:center bottom}
   .mascot.blink #lidT,.mascot.blink #lidB{transform:scaleY(1.05);transition:transform .07s ease-in}
-  @media(max-width:880px){.mascot{zoom:.78}}
+  @media(max-width:880px){.mascot{zoom:.52}}
   @media(prefers-reduced-motion:reduce){.mascot .bob,.gshadow{animation:none}}
 
   /* product shot */
@@ -219,7 +219,7 @@
     <div class="eyewrap reveal in">
       <div class="mascot" id="eyeTile" title="👀">
         <div class="glowbg"></div>
-        <svg width="240" height="252" viewBox="0 0 240 252" fill="none" aria-hidden="true">
+        <svg width="460" height="483" viewBox="0 0 240 252" fill="none" aria-hidden="true">
           <defs>
             <linearGradient id="mgBody" x1="40" y1="20" x2="200" y2="215" gradientUnits="userSpaceOnUse">
               <stop offset="0" stop-color="#FF9455"/><stop offset="1" stop-color="#E24E22"/>
