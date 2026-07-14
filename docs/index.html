@@ -88,13 +88,13 @@
   @keyframes efloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
   .bigeye .glowbg{position:absolute;left:50%;top:50%;width:360px;height:250px;transform:translate(-50%,-50%);
     background:radial-gradient(closest-side,rgba(241,101,41,.42),transparent 72%);filter:blur(28px);z-index:0;pointer-events:none}
-  .eyeball{position:relative;z-index:1;width:232px;height:132px;background:#fdfdff;border-radius:50%;overflow:hidden;
+  .eyeball{position:relative;z-index:1;width:186px;height:150px;background:#fdfdff;border-radius:50%;overflow:hidden;
     box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 6px 18px rgba(20,10,40,.14)}
-  .iris{position:absolute;left:50%;top:50%;width:96px;height:96px;margin:-48px 0 0 -48px;border-radius:50%;
-    background:radial-gradient(circle at 35% 32%,#33507e 0%,#1d2c48 55%,#101b30 100%);transition:transform .07s linear}
-  .pupil{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#0a1220}
-  .hl{position:absolute;left:18px;top:15px;width:24px;height:24px;border-radius:50%;background:#fff;opacity:.95}
-  .hl2{position:absolute;right:20px;bottom:18px;width:11px;height:11px;border-radius:50%;background:#fff;opacity:.7}
+  .iris{position:absolute;left:50%;top:50%;width:114px;height:114px;margin:-57px 0 0 -57px;border-radius:50%;
+    background:radial-gradient(circle at 34% 30%,#6fa4f5 0%,#4a77d8 45%,#2c4e98 78%,#24407c 100%);transition:transform .07s linear}
+  .pupil{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:#131a2e}
+  .hl{position:absolute;left:22px;top:17px;width:30px;height:30px;border-radius:50%;background:#fff;opacity:.96}
+  .hl2{position:absolute;right:19px;bottom:21px;width:14px;height:14px;border-radius:50%;background:#fff;opacity:.8}
   .lid{position:absolute;left:-8%;right:-8%;height:54%;background:var(--bg);transform:scaleY(0);transition:transform .1s ease-out}
   .lid.t{top:-1px;transform-origin:top}.lid.b{bottom:-1px;transform-origin:bottom}
   .bigeye.blink .lid{transform:scaleY(1.05);transition:transform .07s ease-in}
@@ -134,10 +134,13 @@
   .errcard{position:absolute;z-index:3;right:-12px;bottom:34px;width:314px;text-align:left;
     background:rgba(18,15,20,.52);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);
     border:1px solid rgba(255,255,255,.16);border-radius:14px;box-shadow:0 34px 80px rgba(0,0,0,.55);color:#fff;overflow:hidden}
-  .errcard .h{display:flex;justify-content:space-between;padding:10px 13px;font-weight:700;font-size:13px;background:rgba(255,90,77,.2)}
+  .errcard .h{display:flex;align-items:center;gap:8px;padding:11px 13px;font-weight:600;font-size:12.5px;background:rgba(16,14,19,.78)}
+  .errcard .h:before{content:"";width:8px;height:8px;border-radius:50%;background:#ff5f4d;box-shadow:0 0 10px rgba(255,95,77,.8);flex:none}
+  .errcard .h span:first-of-type{flex:1}
+  .errcard .h span:last-of-type{opacity:.6}
   .errcard .r{padding:11px 13px}
   .errcard .f{font-weight:600;font-size:13px;margin-bottom:4px}
-  .errcard .d{font:11px/1.5 var(--mono);opacity:.78}
+  .errcard .d{font:11px/1.5 var(--mono);color:#cfc9d6;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:6px 9px;margin-top:6px}
 
   /* sections */
   section{padding:100px 0;position:relative;z-index:2}
@@ -223,7 +226,6 @@
         </div>
       </div>
     </div>
-    <span class="chip reveal in"><span class="d"></span> VS Code Extension · v1.2</span>
     <h1 class="reveal in">HTML을 <span class="accent">실시간</span>으로<br>브라우저처럼 미리보기</h1>
     <p class="sub reveal in">저장하지 않아도 즉시 반영. 에러는 화면에 친절하게.<br>로컬 서버로 진짜 브라우저와 똑같이 렌더링합니다.</p>
     <div class="cta reveal in">
@@ -259,7 +261,7 @@
         </div>
       </div>
       <div class="errcard">
-        <div class="h"><span>⚠️ 문제가 1개 있어요</span><span>✕</span></div>
+        <div class="h"><span>문제 1개</span><span>✕</span></div>
         <div class="r"><div class="f">「doSomething」(이)라는 것을 찾을 수 없어요.</div><div class="d">doSomething is not defined (index.html:14)</div></div>
       </div>
     </div>
@@ -304,7 +306,7 @@
   <div class="band reveal">
     <div style="display:flex;justify-content:center">
       <div class="errcard" style="position:static;width:min(430px,100%);box-shadow:0 30px 70px rgba(0,0,0,.4)">
-        <div class="h"><span>⚠️ 문제가 2개 있어요</span><span>✕</span></div>
+        <div class="h"><span>문제 2개</span><span>✕</span></div>
         <div class="r"><div class="f">「doSomething」(이)라는 것을 찾을 수 없어요. 이름 오타이거나 스크립트를 안 불러왔을 수 있어요.</div><div class="d">doSomething is not defined (index.html:14)</div></div>
         <div class="r" style="border-top:1px solid rgba(255,255,255,.16)"><div class="f">값이 비어있는 대상에서 「textContent」을(를) 읽으려 했어요.</div><div class="d">Cannot read properties of null (reading 'textContent')</div></div>
       </div>
@@ -359,7 +361,7 @@
     addEventListener('mousemove',function(e){
       var r=tile.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
       var dx=e.clientX-cx,dy=e.clientY-cy,dist=Math.hypot(dx,dy)||1;
-      var k=Math.min(1,dist/320);tx=dx/dist*46*k;ty=dy/dist*14*k;
+      var k=Math.min(1,dist/320);tx=dx/dist*26*k;ty=dy/dist*14*k;
       if(!raf)raf=requestAnimationFrame(function(){raf=null;iris.style.transform='translate('+tx+'px,'+ty+'px)';});
     },{passive:true});
     function blink(){tile.classList.add('blink');

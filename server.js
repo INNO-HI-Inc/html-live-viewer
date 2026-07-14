@@ -99,31 +99,32 @@ function clientSnippet(forwardConsole, showErrorOverlay, qualityChecks) {
       'if(!box){box=document.createElement("div");box.setAttribute("data-hlv-err","");' +
       'box.style.cssText="position:fixed;right:14px;bottom:14px;z-index:2147483647;width:auto;' +
       'max-width:min(380px,calc(100vw - 28px));max-height:46vh;overflow:auto;' +
-      'font:13px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#fff;' +
-      'background:rgba(28,24,30,0.34);-webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5);' +
-      'border:1px solid rgba(255,255,255,0.28);border-radius:14px;' +
-      'box-shadow:0 12px 40px rgba(0,0,0,0.35)";' +
+      'font:12.5px/1.55 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#fff;' +
+      'background:rgba(16,14,19,0.6);-webkit-backdrop-filter:blur(22px) saturate(1.4);backdrop-filter:blur(22px) saturate(1.4);' +
+      'border:1px solid rgba(255,255,255,0.13);border-radius:16px;' +
+      'box-shadow:0 18px 50px rgba(0,0,0,0.5)";' +
       'var h=document.createElement("div");h.style.cssText="position:sticky;top:0;display:flex;' +
-      'justify-content:space-between;align-items:center;padding:9px 12px;font-weight:700;' +
-      'background:rgba(255,90,77,0.16);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:12px 12px 0 0";' +
-      'box._t=document.createElement("span");h.appendChild(box._t);' +
-      'var ca=document.createElement("span");ca.textContent="⧉";ca.title="전체 복사";ca.style.cssText="cursor:pointer;padding:0 6px;opacity:.85";' +
+      'align-items:center;padding:11px 13px 9px;font-weight:600;font-size:12.5px;' +
+      'background:rgba(16,14,19,0.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:15px 15px 0 0";' +
+      'var dt=document.createElement("span");dt.style.cssText="width:8px;height:8px;border-radius:50%;background:#ff5f4d;box-shadow:0 0 10px rgba(255,95,77,.8);margin-right:8px;flex:none";h.appendChild(dt);' +
+      'box._t=document.createElement("span");box._t.style.cssText="flex:1";h.appendChild(box._t);' +
+      'var ca=document.createElement("span");ca.textContent="⧉";ca.title="전체 복사";ca.style.cssText="cursor:pointer;padding:0 7px;opacity:.6;font-size:13px";' +
       'ca.onclick=function(ev){ev.stopPropagation();hlvCopy(box&&box._msgs?box._msgs.join(NL+NL):"",ca,"⧉");};h.appendChild(ca);' +
-      'var x=document.createElement("span");x.textContent="✕";x.style.cssText="cursor:pointer;padding:0 6px";' +
+      'var x=document.createElement("span");x.textContent="✕";x.style.cssText="cursor:pointer;padding:0 7px;opacity:.6;font-size:13px";' +
       'x.onclick=function(){box.remove();box=null;n=0;EN=0;try{parent.postMessage({__hlv:"errcount",n:0},"*")}catch(_){}};h.appendChild(x);box.appendChild(h);' +
       'box._l=document.createElement("div");box.appendChild(box._l);' +
       'box._seen={};box._order=[];box._msgs=[];(document.body||document.documentElement).appendChild(box);}' +
-      'n++;box._t.textContent="⚠️ 문제가 "+n+"개 있어요";' +
+      'n++;box._t.textContent="문제 "+n+"개";' +
       // 같은 메시지는 ×N 으로 합치기 (무한 누적 방지)
       'var key=type+"|"+m;' +
       'if(box._seen[key]){var it=box._seen[key];it.k++;it.b.textContent="×"+it.k;it.b.style.display="inline-block";return;}' +
-      'var r=document.createElement("div");r.style.cssText="padding:10px 12px;border-top:1px solid rgba(255,255,255,.18);position:relative";' +
-      'var f=document.createElement("div");f.style.cssText="font-weight:600;margin-bottom:4px;padding-right:52px";' +
+      'var r=document.createElement("div");r.style.cssText="padding:11px 14px;border-top:1px solid rgba(255,255,255,.08);position:relative";' +
+      'var f=document.createElement("div");f.style.cssText="font-weight:600;color:#f2eff5;line-height:1.55;margin-bottom:6px;padding-right:56px";' +
       'f.textContent=(type==="console"?"코드에서 직접 남긴 오류 메시지예요.":(type==="resource"?"파일(이미지·CSS·JS 등)을 불러오지 못했어요. 경로가 맞는지, 파일이 있는지 확인하세요.":explain(m)));' +
-      'var d=document.createElement("div");d.style.cssText="font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;opacity:.8;white-space:pre-wrap;word-break:break-word";d.textContent=m;' +
-      'var b=document.createElement("span");b.style.cssText="position:absolute;top:9px;right:34px;font-size:11px;background:rgba(255,255,255,.22);border-radius:8px;padding:1px 6px;display:none";' +
+      'var d=document.createElement("div");d.style.cssText="font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;color:#cfc9d6;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:6px 9px;white-space:pre-wrap;word-break:break-word";d.textContent=m;' +
+      'var b=document.createElement("span");b.style.cssText="position:absolute;top:11px;right:36px;font-size:10.5px;background:rgba(255,122,69,.22);color:#ffb46a;border-radius:8px;padding:1px 6px;display:none";' +
       'var cp=document.createElement("span");cp.textContent="⧉";cp.title="이 에러 복사";' +
-      'cp.style.cssText="position:absolute;top:8px;right:10px;cursor:pointer;font-size:12px;opacity:.75";' +
+      'cp.style.cssText="position:absolute;top:9px;right:12px;cursor:pointer;font-size:13px;color:#b9b3c0;opacity:.85";' +
       'cp.addEventListener("click",function(ev){ev.stopPropagation();hlvCopy(f.textContent+NL+m,cp,"⧉");});' +
       'box._msgs.push(f.textContent+NL+m);' +
       'r.appendChild(f);r.appendChild(d);r.appendChild(b);r.appendChild(cp);box._l.appendChild(r);' +

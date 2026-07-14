@@ -2,7 +2,7 @@
   "name": "html-live-viewer",
   "displayName": "HTML Live Viewer",
   "description": "HTML 파일이나 폴더를 열면 실시간 렌더링 결과를 웹페이지처럼 보여주는 미리보기/뷰어 확장",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "publisher": "innohi",
   "license": "MIT",
   "icon": "icon.png",
