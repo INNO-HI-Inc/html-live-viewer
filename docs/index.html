@@ -82,23 +82,10 @@
   .techs span{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 12px}
   .techs span b{color:var(--acc2);font-weight:700}
 
-  /* mascot — 로고 스쿼클 캐릭터 (SVG) */
-  .eyewrap{display:flex;justify-content:center;margin-bottom:34px}
-  .mascot{position:relative;cursor:pointer;user-select:none;line-height:0}
-  .mascot svg{overflow:visible}
-  .mascot .bob{animation:efloat 5.5s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
-  @keyframes efloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
-  .mascot .glowbg{position:absolute;left:50%;top:46%;width:660px;height:560px;transform:translate(-50%,-50%);
-    background:radial-gradient(closest-side,rgba(241,101,41,.34),transparent 72%);filter:blur(30px);z-index:-1;pointer-events:none}
-  .gshadow{transform-box:fill-box;transform-origin:center;animation:gsh 5.5s ease-in-out infinite}
-  @keyframes gsh{0%,100%{transform:scaleX(1);opacity:.32}50%{transform:scaleX(.82);opacity:.2}}
-  #iris{transition:transform .07s linear}
-  #lidT,#lidB{transform:scaleY(0);transform-box:fill-box;transition:transform .1s ease-out}
-  #lidT{transform-origin:center top}
-  #lidB{transform-origin:center bottom}
-  .mascot.blink #lidT,.mascot.blink #lidB{transform:scaleY(1.05);transition:transform .07s ease-in}
-  @media(max-width:880px){.mascot{zoom:.52}}
-  @media(prefers-reduced-motion:reduce){.mascot .bob,.gshadow{animation:none}}
+  /* hero logo */
+  .eyewrap{display:flex;justify-content:center;margin-bottom:28px}
+  .herologo{width:132px;height:132px;border-radius:30px;
+    box-shadow:0 24px 60px rgba(241,101,41,.35),0 0 0 1px rgba(255,255,255,.08)}
 
   /* product shot */
   .shot{position:relative;margin:70px auto 0;max-width:940px;z-index:2}
@@ -216,53 +203,7 @@
   <div class="glow"></div>
   <div class="dots"></div>
   <div class="wrap">
-    <div class="eyewrap reveal in">
-      <div class="mascot" id="eyeTile" title="👀">
-        <div class="glowbg"></div>
-        <svg width="420" height="392" viewBox="0 0 360 336" fill="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="mgBody" x1="90" y1="30" x2="280" y2="300" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stop-color="#FF9455"/><stop offset="1" stop-color="#E24E22"/>
-            </linearGradient>
-            <radialGradient id="mgIris" cx="0.35" cy="0.32" r="0.95">
-              <stop offset="0" stop-color="#3d5c8f"/><stop offset="0.55" stop-color="#1d2c48"/><stop offset="1" stop-color="#101b30"/>
-            </radialGradient>
-            <clipPath id="eyeClip"><ellipse cx="180" cy="122" rx="58" ry="47"/></clipPath>
-          </defs>
-          <ellipse class="gshadow" cx="180" cy="324" rx="88" ry="11" fill="#000" opacity="0.32"/>
-          <g class="bob">
-            <path d="M268 232 C 322 240, 340 206, 322 184 C 332 210, 306 228, 264 212 Z" fill="#E85426"/>
-            <path d="M148 44 Q157 8 170 40 Z" fill="#D14A1E" stroke="#D14A1E" stroke-width="6" stroke-linejoin="round"/>
-            <path d="M171 38 Q181 2 193 36 Z" fill="#D14A1E" stroke="#D14A1E" stroke-width="6" stroke-linejoin="round"/>
-            <path d="M196 40 Q207 10 216 46 Z" fill="#D14A1E" stroke="#D14A1E" stroke-width="6" stroke-linejoin="round"/>
-            <rect x="118" y="254" width="48" height="52" rx="22" fill="#D14A1E"/>
-            <rect x="194" y="254" width="48" height="52" rx="22" fill="#D14A1E"/>
-            <path d="M180 28 C 122 28, 92 78, 88 150 C 85 216, 104 292, 180 292 C 256 292, 275 216, 272 150 C 268 78, 238 28, 180 28 Z" fill="url(#mgBody)"/>
-            <ellipse cx="180" cy="228" rx="64" ry="50" fill="#FFC493" opacity="0.95"/>
-            <rect x="92" y="186" width="44" height="22" rx="11" fill="#E85426" transform="rotate(26 114 197)"/>
-            <rect x="224" y="186" width="44" height="22" rx="11" fill="#E85426" transform="rotate(-26 246 197)"/>
-            <ellipse cx="150" cy="64" rx="46" ry="16" fill="#fff" opacity="0.2"/>
-            <ellipse cx="180" cy="122" rx="58" ry="47" fill="#FDFDFF"/>
-            <g clip-path="url(#eyeClip)">
-              <g id="iris">
-                <circle cx="180" cy="122" r="30" fill="url(#mgIris)"/>
-                <circle cx="180" cy="122" r="13.5" fill="#0a1220"/>
-                <circle cx="169" cy="111" r="8.5" fill="#fff"/>
-                <circle cx="191" cy="133" r="4" fill="#fff" opacity="0.85"/>
-              </g>
-              <rect id="lidT" x="118" y="73" width="124" height="49" fill="url(#mgBody)"/>
-              <rect id="lidB" x="118" y="122" width="124" height="49" fill="url(#mgBody)"/>
-            </g>
-            <circle cx="168" cy="180" r="3" fill="#B23A12" opacity="0.55"/>
-            <circle cx="192" cy="180" r="3" fill="#B23A12" opacity="0.55"/>
-            <path d="M148 198 Q180 218 212 198" stroke="#B23A12" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.75"/>
-            <path d="M197 205 l10 0 l-5 10 Z" fill="#fff" opacity="0.95"/>
-            <ellipse cx="118" cy="170" rx="11" ry="7" fill="#fff" opacity="0.22"/>
-            <ellipse cx="242" cy="170" rx="11" ry="7" fill="#fff" opacity="0.22"/>
-          </g>
-        </svg>
-      </div>
-    </div>
+    <div class="eyewrap reveal in"><img class="herologo" src="icon.png" alt="HTML Live Viewer 로고" width="132" height="132"></div>
     <h1 class="reveal in">HTML을 <span class="accent">실시간</span>으로<br>브라우저처럼 미리보기</h1>
     <p class="sub reveal in">저장하지 않아도 즉시 반영. 에러는 화면에 친절하게.<br>로컬 서버로 진짜 브라우저와 똑같이 렌더링합니다.</p>
     <div class="cta reveal in">
@@ -390,24 +331,7 @@
   const btn=document.getElementById('copy');
   btn.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(document.getElementById('cmdtext').textContent);
     const t=btn.textContent;btn.textContent='복사됨 ✓';setTimeout(()=>btn.textContent=t,1400);}catch(e){}});
-  // 로고 눈: 커서 추적 + 깜빡임 + 클릭 윙크
-  (function(){
-    var tile=document.getElementById('eyeTile'),iris=document.getElementById('iris');
-    if(!tile||!iris)return;
-    var raf=null,tx=0,ty=0;
-    addEventListener('mousemove',function(e){
-      var r=tile.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
-      var dx=e.clientX-cx,dy=e.clientY-cy,dist=Math.hypot(dx,dy)||1;
-      var k=Math.min(1,dist/300);tx=dx/dist*17*k;ty=dy/dist*9*k;
-      if(!raf)raf=requestAnimationFrame(function(){raf=null;iris.style.transform='translate('+tx+'px,'+ty+'px)';});
-    },{passive:true});
-    function blink(){tile.classList.add('blink');
-      setTimeout(function(){tile.classList.remove('blink');},150);
-      setTimeout(blink,2600+Math.random()*3200);}
-    if(!matchMedia('(prefers-reduced-motion: reduce)').matches)setTimeout(blink,2000);
-    tile.addEventListener('click',function(){tile.classList.add('blink');
-      setTimeout(function(){tile.classList.remove('blink');},320);});
-  })();
+
 </script>
 </body>
 </html>
