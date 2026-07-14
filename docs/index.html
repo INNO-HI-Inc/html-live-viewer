@@ -83,23 +83,23 @@
   .techs span b{color:var(--acc2);font-weight:700}
 
   /* interactive eye */
-  .eyewrap{display:flex;justify-content:center;margin-bottom:28px}
-  .eyetile{position:relative;width:128px;height:128px;border-radius:32px;cursor:pointer;user-select:none;
-    background:linear-gradient(160deg,#FF8A4C,#E24E22);display:flex;align-items:center;justify-content:center;
-    box-shadow:0 24px 60px rgba(241,101,41,.38),inset 0 1px 0 rgba(255,255,255,.35);
-    animation:efloat 5.5s ease-in-out infinite}
-  @keyframes efloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-  .eyeball{position:relative;width:88px;height:62px;background:#fdfdff;border-radius:50%;overflow:hidden;
-    box-shadow:inset 0 3px 9px rgba(20,10,40,.16)}
-  .iris{position:absolute;left:50%;top:50%;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;
+  .eyewrap{display:flex;justify-content:center;margin-bottom:30px}
+  .bigeye{position:relative;cursor:pointer;user-select:none;animation:efloat 6s ease-in-out infinite}
+  @keyframes efloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+  .bigeye .glowbg{position:absolute;left:50%;top:50%;width:360px;height:250px;transform:translate(-50%,-50%);
+    background:radial-gradient(closest-side,rgba(241,101,41,.42),transparent 72%);filter:blur(28px);z-index:0;pointer-events:none}
+  .eyeball{position:relative;z-index:1;width:232px;height:132px;background:#fdfdff;border-radius:50%;overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 6px 18px rgba(20,10,40,.14)}
+  .iris{position:absolute;left:50%;top:50%;width:96px;height:96px;margin:-48px 0 0 -48px;border-radius:50%;
     background:radial-gradient(circle at 35% 32%,#33507e 0%,#1d2c48 55%,#101b30 100%);transition:transform .07s linear}
-  .pupil{position:absolute;left:50%;top:50%;width:17px;height:17px;margin:-8.5px 0 0 -8.5px;border-radius:50%;background:#0a1220}
-  .hl{position:absolute;left:8px;top:7px;width:11px;height:11px;border-radius:50%;background:#fff;opacity:.95}
-  .lid{position:absolute;left:-6%;right:-6%;height:52%;background:linear-gradient(160deg,#FF8A4C,#E24E22);
-    transform:scaleY(0);transition:transform .1s ease-out}
+  .pupil{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:#0a1220}
+  .hl{position:absolute;left:18px;top:15px;width:24px;height:24px;border-radius:50%;background:#fff;opacity:.95}
+  .hl2{position:absolute;right:20px;bottom:18px;width:11px;height:11px;border-radius:50%;background:#fff;opacity:.7}
+  .lid{position:absolute;left:-8%;right:-8%;height:54%;background:var(--bg);transform:scaleY(0);transition:transform .1s ease-out}
   .lid.t{top:-1px;transform-origin:top}.lid.b{bottom:-1px;transform-origin:bottom}
-  .eyetile.blink .lid{transform:scaleY(1.04);transition:transform .07s ease-in}
-  @media(prefers-reduced-motion:reduce){.eyetile{animation:none}}
+  .bigeye.blink .lid{transform:scaleY(1.05);transition:transform .07s ease-in}
+  @media(max-width:880px){.bigeye{zoom:.75}}
+  @media(prefers-reduced-motion:reduce){.bigeye{animation:none}}
 
   /* product shot */
   .shot{position:relative;margin:70px auto 0;max-width:940px;z-index:2}
@@ -215,9 +215,10 @@
   <div class="dots"></div>
   <div class="wrap">
     <div class="eyewrap reveal in">
-      <div class="eyetile" id="eyeTile" title="👀">
+      <div class="bigeye" id="eyeTile" title="👀">
+        <div class="glowbg"></div>
         <div class="eyeball">
-          <div class="iris" id="iris"><div class="pupil"></div><div class="hl"></div></div>
+          <div class="iris" id="iris"><div class="pupil"></div><div class="hl"></div><div class="hl2"></div></div>
           <div class="lid t"></div><div class="lid b"></div>
         </div>
       </div>
@@ -358,7 +359,7 @@
     addEventListener('mousemove',function(e){
       var r=tile.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
       var dx=e.clientX-cx,dy=e.clientY-cy,dist=Math.hypot(dx,dy)||1;
-      var k=Math.min(1,dist/240);tx=dx/dist*17*k;ty=dy/dist*11*k;
+      var k=Math.min(1,dist/320);tx=dx/dist*46*k;ty=dy/dist*14*k;
       if(!raf)raf=requestAnimationFrame(function(){raf=null;iris.style.transform='translate('+tx+'px,'+ty+'px)';});
     },{passive:true});
     function blink(){tile.classList.add('blink');
