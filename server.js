@@ -74,6 +74,11 @@ function clientSnippet(forwardConsole, showErrorOverlay, qualityChecks) {
       'try{return typeof x==="object"?JSON.stringify(x):String(x);}catch(e){return String(x);}}).join(" ");}catch(e){return "";}}' +
       'function beacon(l,m){try{if(FC)navigator.sendBeacon("/__log",JSON.stringify({level:l,msg:m}));}catch(e){}}' +
       'var EN=0;function bump(){EN++;try{parent.postMessage({__hlv:"errcount",n:EN},"*")}catch(_){}}' +
+      'var NL=String.fromCharCode(10);' +
+      'function hlvCopy(txt,el,orig){function done(ok){try{el.textContent=ok?"✓":"✗";setTimeout(function(){el.textContent=orig;},900);}catch(_){}}' +
+      'function fb(){try{var ta=document.createElement("textarea");ta.value=txt;ta.style.cssText="position:fixed;opacity:0";' +
+      '(document.body||document.documentElement).appendChild(ta);ta.select();var k=document.execCommand("copy");ta.remove();done(!!k);}catch(_){done(false);}}' +
+      'try{navigator.clipboard.writeText(txt).then(function(){done(true);},function(){fb();});}catch(_){fb();}}' +
       // 원문 에러 → 사람이 이해하기 쉬운 설명
       'function explain(m){m=m||"";var x;' +
       'if(/is not defined/.test(m)){x=(m.match(/(\\w+) is not defined/)||[])[1]||"그것";' +
@@ -102,26 +107,32 @@ function clientSnippet(forwardConsole, showErrorOverlay, qualityChecks) {
       'justify-content:space-between;align-items:center;padding:9px 12px;font-weight:700;' +
       'background:rgba(255,90,77,0.16);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:12px 12px 0 0";' +
       'box._t=document.createElement("span");h.appendChild(box._t);' +
+      'var ca=document.createElement("span");ca.textContent="⧉";ca.title="전체 복사";ca.style.cssText="cursor:pointer;padding:0 6px;opacity:.85";' +
+      'ca.onclick=function(ev){ev.stopPropagation();hlvCopy(box&&box._msgs?box._msgs.join(NL+NL):"",ca,"⧉");};h.appendChild(ca);' +
       'var x=document.createElement("span");x.textContent="✕";x.style.cssText="cursor:pointer;padding:0 6px";' +
       'x.onclick=function(){box.remove();box=null;n=0;EN=0;try{parent.postMessage({__hlv:"errcount",n:0},"*")}catch(_){}};h.appendChild(x);box.appendChild(h);' +
       'box._l=document.createElement("div");box.appendChild(box._l);' +
-      'box._seen={};box._order=[];(document.body||document.documentElement).appendChild(box);}' +
+      'box._seen={};box._order=[];box._msgs=[];(document.body||document.documentElement).appendChild(box);}' +
       'n++;box._t.textContent="⚠️ 문제가 "+n+"개 있어요";' +
       // 같은 메시지는 ×N 으로 합치기 (무한 누적 방지)
       'var key=type+"|"+m;' +
       'if(box._seen[key]){var it=box._seen[key];it.k++;it.b.textContent="×"+it.k;it.b.style.display="inline-block";return;}' +
       'var r=document.createElement("div");r.style.cssText="padding:10px 12px;border-top:1px solid rgba(255,255,255,.18);position:relative";' +
-      'var f=document.createElement("div");f.style.cssText="font-weight:600;margin-bottom:4px;padding-right:30px";' +
+      'var f=document.createElement("div");f.style.cssText="font-weight:600;margin-bottom:4px;padding-right:52px";' +
       'f.textContent=(type==="console"?"코드에서 직접 남긴 오류 메시지예요.":(type==="resource"?"파일(이미지·CSS·JS 등)을 불러오지 못했어요. 경로가 맞는지, 파일이 있는지 확인하세요.":explain(m)));' +
       'var d=document.createElement("div");d.style.cssText="font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;opacity:.8;white-space:pre-wrap;word-break:break-word";d.textContent=m;' +
-      'var b=document.createElement("span");b.style.cssText="position:absolute;top:9px;right:10px;font-size:11px;background:rgba(255,255,255,.22);border-radius:8px;padding:1px 6px;display:none";' +
-      'r.appendChild(f);r.appendChild(d);r.appendChild(b);box._l.appendChild(r);' +
+      'var b=document.createElement("span");b.style.cssText="position:absolute;top:9px;right:34px;font-size:11px;background:rgba(255,255,255,.22);border-radius:8px;padding:1px 6px;display:none";' +
+      'var cp=document.createElement("span");cp.textContent="⧉";cp.title="이 에러 복사";' +
+      'cp.style.cssText="position:absolute;top:8px;right:10px;cursor:pointer;font-size:12px;opacity:.75";' +
+      'cp.addEventListener("click",function(ev){ev.stopPropagation();hlvCopy(f.textContent+NL+m,cp,"⧉");});' +
+      'box._msgs.push(f.textContent+NL+m);' +
+      'r.appendChild(f);r.appendChild(d);r.appendChild(b);r.appendChild(cp);box._l.appendChild(r);' +
       // 에러 행 클릭 → 부모(웹뷰 셸)로 알려 에디터 소스로 이동
       'if(type!=="console"){r.style.cursor="pointer";r.title="클릭 → 소스로 이동";' +
       'r.addEventListener("click",function(){try{parent.postMessage({__hlv:"open",raw:m},"*");}catch(_){}} );}' +
       'box._seen[key]={k:1,b:b};box._order.push({key:key,r:r});' +
       // 최대 20개 유지 (오래된 것부터 제거)
-      'if(box._order.length>20){var old=box._order.shift();old.r.remove();delete box._seen[old.key];}}catch(e){}}' +
+      'if(box._order.length>20){var old=box._order.shift();old.r.remove();delete box._seen[old.key];box._msgs.shift();}}catch(e){}}' +
       // 후킹
       '["log","info","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){' +
       'var m=str(arguments);beacon(k,m);if(k==="error"){overlay(m,"console");bump();}if(o)o.apply(console,arguments);};});' +

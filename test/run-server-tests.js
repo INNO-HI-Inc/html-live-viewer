@@ -173,6 +173,7 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms || 30));
     check('window.error/rejection 후킹 포함', on.body.includes('addEventListener("error"') && on.body.includes('unhandledrejection'));
     check('에러 카운트(errcount) 전파 포함', on.body.includes('errcount') && on.body.includes('function bump'));
     check('사람이 읽기 쉬운 설명(explain) 포함', on.body.includes('function explain') && on.body.includes('찾을 수 없어요'));
+    check('에러 복사 버튼 주입(개별+전체+폴백)', on.body.includes('hlvCopy') && on.body.includes('전체 복사') && on.body.includes('execCommand'));
     check('CSS 핫리로드 로직 주입', on.body.includes('link[rel=stylesheet]') && on.body.includes('e.data==="css"'));
     check('스크롤 위치 보존 로직 주입', on.body.includes('__hlv_sy__') && on.body.includes('scrollTo'));
     check('리소스 로드 실패(캡처) 감지 주입', on.body.includes('리소스 로드 실패') && on.body.includes('"resource"'));
