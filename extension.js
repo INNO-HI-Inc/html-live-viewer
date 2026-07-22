@@ -240,7 +240,8 @@ async function showQrPanel(context) {
   qrPanel.onDidDispose(guard(() => { qrPanel = undefined; }), null, context.subscriptions);
 }
 
-let reloadFull = false; // 대기 중 배치에 CSS 외 변경이 섞이면 전체 리로드
+let reloadFull = false;
+let lastSyncScroll = 0; // syncScroll 스로틀 // 대기 중 배치에 CSS 외 변경이 섞이면 전체 리로드
 
 function isCssFile(nameOrPath) {
   return /\.css$/i.test(nameOrPath || '');
@@ -412,6 +413,9 @@ function activate(context) {
   context.subscriptions.push(
     vscode.window.onDidChangeTextEditorVisibleRanges(guard((e) => {
       if (!panel || !getConfig().get('syncScroll', false)) return;
+      const now = Date.now();
+      if (now - lastSyncScroll < 33) return; // 과도한 메시지 방지
+      lastSyncScroll = now;
       if (!e || !e.textEditor || !panel.sourceDoc) return;
       if (e.textEditor.document.uri.toString() !== panel.sourceDoc.uri.toString()) return;
       const ranges = e.visibleRanges;
@@ -563,6 +567,7 @@ class PreviewPanel {
     // 툴바가 새로 그려지므로 세션 토글 상태도 함께 초기화 (UI와 상태 일치)
     this._pinned = false;
     this._paused = false;
+    this._errs = 0; // 새 페이지 → 에러 카운트 리셋 (상태바 스테일 방지)
     const doc = this.sourceDoc;
     const root = rootForDoc(doc);
     if (!root || !doc.uri || doc.uri.scheme !== 'file') { this._setDirect(doc); return; }
@@ -617,6 +622,7 @@ function openSettings(context) {
 }
 
 function deactivate() {
+  if (reloadTimer) { try { clearTimeout(reloadTimer); } catch (_) { /* noop */ } reloadTimer = undefined; }
   if (server) { try { server.dispose(); } catch (_) { /* noop */ } server = undefined; }
   serverRoot = undefined;
   panel = undefined;

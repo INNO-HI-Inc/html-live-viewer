@@ -360,7 +360,11 @@ function check(name, cond) {
     p0.webview.__fireMessage({ type: 'errcount', n: 3 });
     await tick(10);
     const sb = (mock.__state.statusBars || [])[0];
-    check('상태바에 에러 수 표시', !!sb && /3/.test(sb.text));
+    check('상태바에 에러 수 표시', !!sb && sb.text.includes('$(warning) 3'));
+    // 다른 파일로 전환 → 에러 카운트 리셋 (스테일 방지)
+    mock.__fireActiveEditor({ document: other });
+    await tick(120);
+    check('파일 전환 시 상태바 에러 리셋', !!sb && !sb.text.includes('$(warning)'));
     try { sseReq.destroy(); } catch (_) {}
     ext.deactivate();
   }

@@ -2,7 +2,7 @@
   "name": "html-live-viewer",
   "displayName": "HTML Live Viewer",
   "description": "HTML 파일이나 폴더를 열면 실시간 렌더링 결과를 웹페이지처럼 보여주는 미리보기/뷰어 확장",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "publisher": "innohi",
   "license": "MIT",
   "icon": "icon.png",
@@ -22,7 +22,13 @@
     "preview",
     "viewer",
     "live",
-    "browser"
+    "browser",
+    "live server",
+    "livereload",
+    "live preview",
+    "localhost",
+    "mobile",
+    "responsive"
   ],
   "activationEvents": [
     "onStartupFinished",
@@ -234,5 +240,9 @@
   "homepage": "https://inno-hi-inc.github.io/html-live-viewer/",
   "bugs": {
     "url": "https://github.com/INNO-HI-Inc/html-live-viewer/issues"
+  },
+  "galleryBanner": {
+    "color": "#1e0d06",
+    "theme": "dark"
   }
 }
